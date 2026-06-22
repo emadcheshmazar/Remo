@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, date as Date
+import sqlalchemy as sa
 from sqlmodel import SQLModel, Field
 
 
@@ -12,4 +13,4 @@ class DailyReport(SQLModel, table=True):
     today_text: str = Field(default="")
     blockers_text: str = Field(default="")
     tomorrow_text: str = Field(default="")
-    updated_at: datetime
+    updated_at: datetime = Field(sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False))

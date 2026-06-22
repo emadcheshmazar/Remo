@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "admin123"
+    CORS_ORIGINS: str = "http://localhost:3000"
 
     model_config = {"env_file": ".env"}
 
