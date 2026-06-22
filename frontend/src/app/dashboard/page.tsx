@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { WorkSessionCard } from '@/components/WorkSessionCard'
 import { StatusCard } from '@/components/StatusCard'
+import { ReportCard } from '@/components/ReportCard'
 
 export default function DashboardPage() {
   const { user, clearAuth } = useAuthStore()
@@ -42,6 +43,9 @@ export default function DashboardPage() {
         <div className="flex flex-wrap gap-6">
           <WorkSessionCard />
           <StatusCard />
+        </div>
+        <div className="mt-6">
+          <ReportCard />
         </div>
       </main>
     </div>

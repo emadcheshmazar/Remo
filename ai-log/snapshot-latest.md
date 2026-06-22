@@ -1,38 +1,28 @@
-🧠 SNAPSHOT — Phase 03
+🧠 SNAPSHOT — Phase 04
 
 System State
-* Status module complete — current state + history log
-* Dashboard: WorkSessionCard + StatusCard (both polling 30s)
+* 4 backend modules complete (auth, users, work, status, reports)
+* Dashboard: WorkSessionCard + StatusCard + ReportCard
 
 Active Modules
-* core: config, database, security, seed ✅
-* shared: dependencies, roles ✅
-* auth: schema, router ✅
-* users: model, schema, repository, service, router ✅
-* work: model, schema, repository, service, router ✅
-* status: model, schema, repository, service, router ✅
-* reports: empty
+* auth ✅  users ✅  work ✅  status ✅  reports ✅
 * timeline: empty
 
 DB State
 * 001: users ✅
 * 002: work_sessions ✅
 * 003: user_statuses + status_logs ✅
-
-Running Services
-* db: postgres:16-alpine — port 5432
-* backend: entrypoint.sh → alembic upgrade head → uvicorn --reload — port 8000
-* frontend: next dev — port 3000
+* 004: daily_reports (unique user_id+date) ✅
 
 Known Constraints
-* UserStatus: one row per user (upsert on every status change)
-* StatusLog: append-only, ordered by changed_at desc
-* No WebSocket — polling every 30s via React Query
+* Reports editable only for current UTC day via PUT /today
+* Unique constraint (user_id, date) enforced at DB level
+* No WebSocket — polling 30s
 
 Next Action
-* Phase 04: reports module
-  - DailyReport model: user_id, date, today_text, blockers_text, tomorrow_text, updated_at
-  - 1 report per user per day (upsert)
-  - Editable until cutoff time (configurable, default 23:59)
-  - Endpoints: GET/PUT /api/v1/reports/today, GET /api/v1/reports/{user_id}
-  - Frontend: report editor card on dashboard
+* Phase 05: timeline engine
+  - TimelineEvent model: id, user_id, event_type, metadata (JSON), occurred_at
+  - event_types: SESSION_START, SESSION_END, STATUS_CHANGE, REPORT_SUBMITTED
+  - Auto-generated: triggered on work/status/report changes (service layer)
+  - Endpoints: GET /api/v1/timeline/me, GET /api/v1/timeline/{user_id}
+  - Frontend: timeline list component on dashboard

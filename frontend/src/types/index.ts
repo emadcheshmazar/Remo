@@ -44,3 +44,13 @@ export interface UserStatus {
   status: StatusState
   updated_at: string
 }
+
+export interface DailyReport {
+  id: string
+  user_id: string
+  date: string
+  today_text: string
+  blockers_text: string
+  tomorrow_text: string
+  updated_at: string
+}
