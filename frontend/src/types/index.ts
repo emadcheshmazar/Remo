@@ -54,3 +54,13 @@ export interface DailyReport {
   tomorrow_text: string
   updated_at: string
 }
+
+export type EventType = 'SESSION_START' | 'SESSION_END' | 'STATUS_CHANGE' | 'REPORT_SUBMITTED'
+
+export interface TimelineEvent {
+  id: string
+  user_id: string
+  event_type: EventType
+  payload: Record<string, unknown>
+  occurred_at: string
+}

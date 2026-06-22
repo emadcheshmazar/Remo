@@ -6,6 +6,7 @@ import { useAuthStore } from '@/store/auth.store'
 import { WorkSessionCard } from '@/components/WorkSessionCard'
 import { StatusCard } from '@/components/StatusCard'
 import { ReportCard } from '@/components/ReportCard'
+import { TimelineCard } from '@/components/TimelineCard'
 
 export default function DashboardPage() {
   const { user, clearAuth } = useAuthStore()
@@ -44,8 +45,9 @@ export default function DashboardPage() {
           <WorkSessionCard />
           <StatusCard />
         </div>
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap gap-6">
           <ReportCard />
+          <TimelineCard />
         </div>
       </main>
     </div>

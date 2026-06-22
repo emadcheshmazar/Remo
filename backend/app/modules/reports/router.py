@@ -7,12 +7,18 @@ from app.shared.roles import MANAGEABLE_ROLES
 from app.modules.reports.schema import ReportRead, ReportUpsert
 from app.modules.reports.service import ReportService
 from app.modules.reports.repository import ReportRepository
+from app.modules.timeline.service import TimelineService
+from app.modules.timeline.repository import TimelineRepository
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 def _service(session: AsyncSession = Depends(get_session)) -> ReportService:
     return ReportService(ReportRepository(session))
+
+
+def _timeline(session: AsyncSession = Depends(get_session)) -> TimelineService:
+    return TimelineService(TimelineRepository(session))
 
 
 @router.get("/today", response_model=ReportRead | None)
@@ -28,8 +34,12 @@ async def upsert_today(
     data: ReportUpsert,
     current_user: dict = Depends(get_current_user),
     service: ReportService = Depends(_service),
+    timeline: TimelineService = Depends(_timeline),
 ):
-    return await service.upsert_today(uuid.UUID(current_user["sub"]), data)
+    user_id = uuid.UUID(current_user["sub"])
+    report = await service.upsert_today(user_id, data)
+    await timeline.add_event(user_id, "REPORT_SUBMITTED", {"date": str(report.date)})
+    return report
 
 
 @router.get("/me", response_model=list[ReportRead])

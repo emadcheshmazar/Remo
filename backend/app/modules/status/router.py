@@ -6,12 +6,18 @@ from app.shared.dependencies import get_current_user
 from app.modules.status.schema import StatusRead, StatusUpdate, StatusLogRead
 from app.modules.status.service import StatusService
 from app.modules.status.repository import StatusRepository
+from app.modules.timeline.service import TimelineService
+from app.modules.timeline.repository import TimelineRepository
 
 router = APIRouter(prefix="/status", tags=["status"])
 
 
 def _service(session: AsyncSession = Depends(get_session)) -> StatusService:
     return StatusService(StatusRepository(session))
+
+
+def _timeline(session: AsyncSession = Depends(get_session)) -> TimelineService:
+    return TimelineService(TimelineRepository(session))
 
 
 @router.get("/me", response_model=StatusRead | None)
@@ -27,8 +33,12 @@ async def update_my_status(
     data: StatusUpdate,
     current_user: dict = Depends(get_current_user),
     service: StatusService = Depends(_service),
+    timeline: TimelineService = Depends(_timeline),
 ):
-    return await service.update_status(uuid.UUID(current_user["sub"]), data.status)
+    user_id = uuid.UUID(current_user["sub"])
+    result = await service.update_status(user_id, data.status)
+    await timeline.add_event(user_id, "STATUS_CHANGE", {"to": data.status})
+    return result
 
 
 @router.get("", response_model=list[StatusRead])

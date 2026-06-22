@@ -1,28 +1,34 @@
-🧠 SNAPSHOT — Phase 04
+🧠 SNAPSHOT — Phase 05
 
 System State
-* 4 backend modules complete (auth, users, work, status, reports)
-* Dashboard: WorkSessionCard + StatusCard + ReportCard
+* All 6 backend modules complete and integrated
+* Dashboard: WorkSessionCard + StatusCard + ReportCard + TimelineCard
+* Timeline auto-fed by work/status/report events
 
 Active Modules
-* auth ✅  users ✅  work ✅  status ✅  reports ✅
-* timeline: empty
+* auth ✅  users ✅  work ✅  status ✅  reports ✅  timeline ✅
 
 DB State
 * 001: users ✅
 * 002: work_sessions ✅
 * 003: user_statuses + status_logs ✅
-* 004: daily_reports (unique user_id+date) ✅
+* 004: daily_reports ✅
+* 005: timeline_events ✅
+
+API surface (complete):
+* /api/v1/auth/login, /me, /me/password
+* /api/v1/users CRUD
+* /api/v1/work/start|end|current|summary|history
+* /api/v1/status/me, /status, /status/{id}/log
+* /api/v1/reports/today, /me, /{uid}, /{uid}/{date}
+* /api/v1/timeline/me, /me/today, /{uid}
 
 Known Constraints
-* Reports editable only for current UTC day via PUT /today
-* Unique constraint (user_id, date) enforced at DB level
+* Timeline append-only, router-level injection pattern
 * No WebSocket — polling 30s
+* Role hierarchy: ADMIN > MANAGER > SUPERVISOR > MEMBER
 
 Next Action
-* Phase 05: timeline engine
-  - TimelineEvent model: id, user_id, event_type, metadata (JSON), occurred_at
-  - event_types: SESSION_START, SESSION_END, STATUS_CHANGE, REPORT_SUBMITTED
-  - Auto-generated: triggered on work/status/report changes (service layer)
-  - Endpoints: GET /api/v1/timeline/me, GET /api/v1/timeline/{user_id}
-  - Frontend: timeline list component on dashboard
+* Phase 06: admin panel frontend (/admin route, create/edit/delete managers)
+* Phase 07: manager panel (team management UI)
+* Phase 08: team presence view (all users' status + work state)

@@ -7,6 +7,8 @@ from app.shared.roles import MANAGEABLE_ROLES
 from app.modules.work.schema import WorkSessionRead, WorkSummary
 from app.modules.work.service import WorkService
 from app.modules.work.repository import WorkRepository
+from app.modules.timeline.service import TimelineService
+from app.modules.timeline.repository import TimelineRepository
 
 router = APIRouter(prefix="/work", tags=["work"])
 
@@ -15,20 +17,36 @@ def _service(session: AsyncSession = Depends(get_session)) -> WorkService:
     return WorkService(WorkRepository(session))
 
 
+def _timeline(session: AsyncSession = Depends(get_session)) -> TimelineService:
+    return TimelineService(TimelineRepository(session))
+
+
 @router.post("/start", response_model=WorkSessionRead, status_code=201)
 async def start_session(
     current_user: dict = Depends(get_current_user),
     service: WorkService = Depends(_service),
+    timeline: TimelineService = Depends(_timeline),
 ):
-    return await service.start_session(uuid.UUID(current_user["sub"]))
+    user_id = uuid.UUID(current_user["sub"])
+    session = await service.start_session(user_id)
+    await timeline.add_event(user_id, "SESSION_START", {"session_id": str(session.id)})
+    return session
 
 
 @router.post("/end", response_model=WorkSessionRead)
 async def end_session(
     current_user: dict = Depends(get_current_user),
     service: WorkService = Depends(_service),
+    timeline: TimelineService = Depends(_timeline),
 ):
-    return await service.end_session(uuid.UUID(current_user["sub"]))
+    user_id = uuid.UUID(current_user["sub"])
+    session = await service.end_session(user_id)
+    await timeline.add_event(
+        user_id,
+        "SESSION_END",
+        {"session_id": str(session.id), "duration_minutes": session.duration_minutes},
+    )
+    return session
 
 
 @router.get("/current", response_model=WorkSessionRead | None)
