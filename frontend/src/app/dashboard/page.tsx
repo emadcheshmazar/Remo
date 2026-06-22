@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { WorkSessionCard } from '@/components/WorkSessionCard'
+import { StatusCard } from '@/components/StatusCard'
 
 export default function DashboardPage() {
   const { user, clearAuth } = useAuthStore()
@@ -40,6 +41,7 @@ export default function DashboardPage() {
         <h1 className="text-lg font-semibold text-gray-800 mb-6">Dashboard</h1>
         <div className="flex flex-wrap gap-6">
           <WorkSessionCard />
+          <StatusCard />
         </div>
       </main>
     </div>

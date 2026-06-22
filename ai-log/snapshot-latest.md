@@ -1,8 +1,8 @@
-🧠 SNAPSHOT — Phase 02
+🧠 SNAPSHOT — Phase 03
 
 System State
-* Work sessions fully implemented — start/end/summary/history
-* Frontend has live timer on dashboard via WorkSessionCard
+* Status module complete — current state + history log
+* Dashboard: WorkSessionCard + StatusCard (both polling 30s)
 
 Active Modules
 * core: config, database, security, seed ✅
@@ -10,14 +10,14 @@ Active Modules
 * auth: schema, router ✅
 * users: model, schema, repository, service, router ✅
 * work: model, schema, repository, service, router ✅
-* status: empty
+* status: model, schema, repository, service, router ✅
 * reports: empty
 * timeline: empty
 
 DB State
-* Migration 001: users table ✅
-* Migration 002: work_sessions table ✅
-* work_sessions: id, user_id(FK), date, started_at, ended_at, duration_minutes
+* 001: users ✅
+* 002: work_sessions ✅
+* 003: user_statuses + status_logs ✅
 
 Running Services
 * db: postgres:16-alpine — port 5432
@@ -25,13 +25,14 @@ Running Services
 * frontend: next dev — port 3000
 
 Known Constraints
-* One active session at a time per user (409 if try to double-start)
-* duration_minutes = floor((ended_at - started_at).total_seconds() / 60)
+* UserStatus: one row per user (upsert on every status change)
+* StatusLog: append-only, ordered by changed_at desc
 * No WebSocket — polling every 30s via React Query
 
 Next Action
-* Phase 03: status module
-  - UserStatus model: user_id, status (enum), changed_at
-  - StatusLog: history of changes
-  - Endpoints: GET/PATCH /api/v1/status/me, GET /api/v1/status (all online users)
-  - Frontend: status selector card on dashboard
+* Phase 04: reports module
+  - DailyReport model: user_id, date, today_text, blockers_text, tomorrow_text, updated_at
+  - 1 report per user per day (upsert)
+  - Editable until cutoff time (configurable, default 23:59)
+  - Endpoints: GET/PUT /api/v1/reports/today, GET /api/v1/reports/{user_id}
+  - Frontend: report editor card on dashboard

@@ -36,3 +36,11 @@ export interface WorkSummary {
   session: WorkSession | null
   total_minutes_today: number
 }
+
+export type StatusState = 'AVAILABLE' | 'OFFLINE' | 'BREAK' | 'FOCUS' | 'MEETING'
+
+export interface UserStatus {
+  user_id: string
+  status: StatusState
+  updated_at: string
+}
