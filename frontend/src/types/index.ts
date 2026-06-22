@@ -55,6 +55,19 @@ export interface DailyReport {
   updated_at: string
 }
 
+export interface UserCreate {
+  username: string
+  password: string
+  full_name: string
+  role: Role
+}
+
+export interface UserUpdate {
+  full_name?: string
+  is_active?: boolean
+  password?: string
+}
+
 export type EventType = 'SESSION_START' | 'SESSION_END' | 'STATUS_CHANGE' | 'REPORT_SUBMITTED'
 
 export interface TimelineEvent {

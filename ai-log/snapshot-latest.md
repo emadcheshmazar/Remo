@@ -1,34 +1,30 @@
-🧠 SNAPSHOT — Phase 05
+🧠 SNAPSHOT — Phase 08 (FINAL)
 
 System State
-* All 6 backend modules complete and integrated
-* Dashboard: WorkSessionCard + StatusCard + ReportCard + TimelineCard
-* Timeline auto-fed by work/status/report events
+* All modules and pages complete
+* Full end-to-end system: auth → dashboard → admin → team → presence
 
-Active Modules
+Active Modules (Backend)
 * auth ✅  users ✅  work ✅  status ✅  reports ✅  timeline ✅
 
-DB State
-* 001: users ✅
-* 002: work_sessions ✅
-* 003: user_statuses + status_logs ✅
-* 004: daily_reports ✅
-* 005: timeline_events ✅
+Frontend Pages
+* /login           → all
+* /dashboard       → all (work session + status + report + timeline)
+* /admin           → ADMIN (manager CRUD)
+* /team            → MANAGER + SUPERVISOR (team CRUD)
+* /presence        → ADMIN + MANAGER + SUPERVISOR (team presence board)
 
-API surface (complete):
-* /api/v1/auth/login, /me, /me/password
-* /api/v1/users CRUD
-* /api/v1/work/start|end|current|summary|history
-* /api/v1/status/me, /status, /status/{id}/log
-* /api/v1/reports/today, /me, /{uid}, /{uid}/{date}
-* /api/v1/timeline/me, /me/today, /{uid}
+DB State (5 migrations)
+* users, work_sessions, user_statuses, status_logs, daily_reports, timeline_events ✅
 
-Known Constraints
-* Timeline append-only, router-level injection pattern
-* No WebSocket — polling 30s
-* Role hierarchy: ADMIN > MANAGER > SUPERVISOR > MEMBER
+Deployment
+* docker-compose up --build
+* Admin default: admin / admin123 (env override: ADMIN_USERNAME, ADMIN_PASSWORD)
+* Backend: localhost:8000
+* Frontend: localhost:3000
+* DB: localhost:5432
 
-Next Action
-* Phase 06: admin panel frontend (/admin route, create/edit/delete managers)
-* Phase 07: manager panel (team management UI)
-* Phase 08: team presence view (all users' status + work state)
+System Complete
+All planned phases delivered:
+Phase 0: scaffold → Phase 1: auth/users → Phase 2: work → Phase 3: status
+→ Phase 4: reports → Phase 5: timeline → Phase 6: admin → Phase 7: team → Phase 8: presence
