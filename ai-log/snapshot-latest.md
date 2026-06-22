@@ -1,24 +1,23 @@
-🧠 SNAPSHOT — Phase 01
+🧠 SNAPSHOT — Phase 02
 
 System State
-* Auth + users fully implemented end-to-end
-* Login → JWT → dashboard flow complete
-* Admin auto-seeded on startup
+* Work sessions fully implemented — start/end/summary/history
+* Frontend has live timer on dashboard via WorkSessionCard
 
 Active Modules
-* core: config (+ ADMIN creds), database, security, seed ✅
+* core: config, database, security, seed ✅
 * shared: dependencies, roles ✅
 * auth: schema, router ✅
 * users: model, schema, repository, service, router ✅
-* work: empty
+* work: model, schema, repository, service, router ✅
 * status: empty
 * reports: empty
 * timeline: empty
 
 DB State
-* Migration 001_create_users ready
-* Table: users (id, username, password_hash, full_name, role, is_active, created_at, created_by)
-* Alembic runs automatically via entrypoint.sh
+* Migration 001: users table ✅
+* Migration 002: work_sessions table ✅
+* work_sessions: id, user_id(FK), date, started_at, ended_at, duration_minutes
 
 Running Services
 * db: postgres:16-alpine — port 5432
@@ -26,11 +25,13 @@ Running Services
 * frontend: next dev — port 3000
 
 Known Constraints
+* One active session at a time per user (409 if try to double-start)
+* duration_minutes = floor((ended_at - started_at).total_seconds() / 60)
 * No WebSocket — polling every 30s via React Query
-* MANAGEABLE_ROLES: ADMIN→[MANAGER], MANAGER→[SUPERVISOR,MEMBER], SUPERVISOR→[MEMBER]
-* Login response includes user object (no second /me round-trip)
-* Admin default: admin / admin123 (override via env)
 
 Next Action
-* Phase 02: work module — WorkSession model, start/end session, one active per user per day
-* Phase 03: status module — UserStatus model, status change, status log
+* Phase 03: status module
+  - UserStatus model: user_id, status (enum), changed_at
+  - StatusLog: history of changes
+  - Endpoints: GET/PATCH /api/v1/status/me, GET /api/v1/status (all online users)
+  - Frontend: status selector card on dashboard

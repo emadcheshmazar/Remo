@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
+import { WorkSessionCard } from '@/components/WorkSessionCard'
 
 export default function DashboardPage() {
   const { user, clearAuth } = useAuthStore()
@@ -20,18 +21,26 @@ export default function DashboardPage() {
         <span className="font-semibold text-gray-800">RWMS</span>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-500">{user.full_name}</span>
-          <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">{user.role}</span>
+          <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">
+            {user.role}
+          </span>
           <button
-            onClick={() => { clearAuth(); router.push('/login') }}
+            onClick={() => {
+              clearAuth()
+              router.push('/login')
+            }}
             className="text-sm text-gray-400 hover:text-gray-700"
           >
             Sign out
           </button>
         </div>
       </header>
+
       <main className="p-8">
-        <h1 className="text-xl font-semibold text-gray-800 mb-1">Dashboard</h1>
-        <p className="text-sm text-gray-400">Phase 2 coming soon</p>
+        <h1 className="text-lg font-semibold text-gray-800 mb-6">Dashboard</h1>
+        <div className="flex flex-wrap gap-6">
+          <WorkSessionCard />
+        </div>
       </main>
     </div>
   )
