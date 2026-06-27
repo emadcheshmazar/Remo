@@ -26,6 +26,7 @@ class UserRead(BaseModel):
     role: UserRole
     is_active: bool
     created_at: datetime
+    supervisor_id: uuid.UUID | None = None
 
     model_config = {"from_attributes": True}
 
@@ -34,6 +35,10 @@ class UserUpdate(BaseModel):
     full_name: str | None = None
     is_active: bool | None = None
     password: str | None = None
+
+
+class SupervisorAssign(BaseModel):
+    supervisor_id: uuid.UUID | None = None
 
 
 class PasswordChange(BaseModel):

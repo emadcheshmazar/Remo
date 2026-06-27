@@ -6,4 +6,6 @@ export const userService = {
   create: (data: UserCreate) => api.post<User>('/api/v1/users', data),
   update: (id: string, data: UserUpdate) => api.patch<User>(`/api/v1/users/${id}`, data),
   remove: (id: string) => api.delete(`/api/v1/users/${id}`),
+  assignSupervisor: (memberId: string, supervisorId: string | null) =>
+    api.patch<User>(`/api/v1/users/${memberId}/supervisor`, { supervisor_id: supervisorId }),
 }

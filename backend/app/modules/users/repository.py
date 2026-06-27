@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import select
+from sqlalchemy import select, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.users.model import User
 from app.shared.roles import UserRole
@@ -25,6 +25,49 @@ class UserRepository:
         result = await self.session.execute(
             select(User)
             .where(User.role.in_(roles))
+            .order_by(User.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def list_for_manager(self, manager_id: uuid.UUID) -> list[User]:
+        supervisor_ids_subq = (
+            select(User.id)
+            .where(User.role == UserRole.SUPERVISOR, User.created_by == manager_id)
+            .scalar_subquery()
+        )
+        stmt = (
+            select(User)
+            .where(
+                or_(
+                    and_(User.role == UserRole.SUPERVISOR, User.created_by == manager_id),
+                    and_(
+                        User.role == UserRole.MEMBER,
+                        or_(
+                            User.created_by == manager_id,
+                            User.created_by.in_(supervisor_ids_subq),
+                            User.supervisor_id.in_(supervisor_ids_subq),
+                        ),
+                    ),
+                )
+            )
+            .order_by(User.created_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_for_supervisor(self, supervisor_id: uuid.UUID) -> list[User]:
+        result = await self.session.execute(
+            select(User)
+            .where(User.role == UserRole.MEMBER, User.supervisor_id == supervisor_id)
+            .order_by(User.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def list_teammates(self, supervisor_id: uuid.UUID) -> list[User]:
+        """Supervisor + all their members — used for calendar visibility."""
+        result = await self.session.execute(
+            select(User)
+            .where(or_(User.id == supervisor_id, User.supervisor_id == supervisor_id))
             .order_by(User.created_at.desc())
         )
         return list(result.scalars().all())

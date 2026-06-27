@@ -20,3 +20,11 @@ class User(SQLModel, table=True):
         sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False),
     )
     created_by: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")
+    supervisor_id: Optional[uuid.UUID] = Field(
+        default=None,
+        sa_column=sa.Column(
+            sa.UUID(),
+            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+    )

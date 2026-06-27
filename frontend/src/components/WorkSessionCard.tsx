@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { workService } from '@/services/work.service'
+import { useT } from '@/hooks/useT'
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60)
@@ -19,8 +20,10 @@ function formatElapsed(startedAt: string): string {
 }
 
 export function WorkSessionCard() {
+  const t = useT()
   const qc = useQueryClient()
   const [elapsed, setElapsed] = useState('00:00:00')
+  const [confirm, setConfirm] = useState<'start' | 'end' | null>(null)
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ['work-summary'],
@@ -39,62 +42,86 @@ export function WorkSessionCard() {
 
   const startMutation = useMutation({
     mutationFn: () => workService.start(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['work-summary'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['work-summary'] })
+      qc.invalidateQueries({ queryKey: ['my-status'] })
+      qc.invalidateQueries({ queryKey: ['timeline-today'] })
+    },
   })
 
   const endMutation = useMutation({
     mutationFn: () => workService.end(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['work-summary'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['work-summary'] })
+      qc.invalidateQueries({ queryKey: ['my-status'] })
+      qc.invalidateQueries({ queryKey: ['timeline-today'] })
+    },
   })
 
-  if (isLoading) {
-    return <div className="bg-white rounded-lg border p-6 h-40 animate-pulse" />
-  }
+  if (isLoading) return <div className="bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700 p-6 h-40 animate-pulse" />
 
   const isActive = summary?.is_active ?? false
   const total = summary?.total_minutes_today ?? 0
 
-  return (
-    <div className="bg-white rounded-lg border p-6 w-full max-w-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-medium text-gray-700">Work Session</h2>
-        <span
-          className={`text-xs px-2 py-1 rounded-full font-medium ${
-            isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          {isActive ? 'Active' : 'Idle'}
-        </span>
-      </div>
+  const handleConfirm = () => {
+    if (confirm === 'start') startMutation.mutate()
+    else if (confirm === 'end') endMutation.mutate()
+    setConfirm(null)
+  }
 
-      {isActive && (
-        <div className="text-3xl font-mono tracking-widest text-gray-800 mb-4">
-          {elapsed}
+  return (
+    <>
+      {confirm && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="font-semibold text-gray-800 dark:text-slate-100 mb-2">
+              {confirm === 'start' ? t('confirm_start') : t('confirm_end')}
+            </h3>
+            <div className="flex gap-3 justify-end mt-5">
+              <button onClick={() => setConfirm(null)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200">
+                {t('cancel')}
+              </button>
+              <button
+                onClick={handleConfirm}
+                className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${confirm === 'start' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
+              >
+                {t('confirm')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {!isActive && total > 0 && (
-        <p className="text-sm text-gray-500 mb-4">
-          Today total:{' '}
-          <span className="font-semibold text-gray-700">{formatDuration(total)}</span>
-        </p>
-      )}
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-medium text-gray-700 dark:text-slate-300">{t('work_session')}</h2>
+          <span className={`text-xs px-2 py-1 rounded-full font-medium ${isActive ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}`}>
+            {isActive ? t('session_active') : t('no_session')}
+          </span>
+        </div>
 
-      {!isActive && total === 0 && (
-        <p className="text-sm text-gray-400 mb-4">No sessions today</p>
-      )}
+        {isActive && (
+          <div className="text-3xl font-mono tracking-widest text-gray-800 dark:text-slate-100 mb-4">{elapsed}</div>
+        )}
 
-      <button
-        onClick={() => (isActive ? endMutation.mutate() : startMutation.mutate())}
-        disabled={startMutation.isPending || endMutation.isPending}
-        className={`w-full py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 ${
-          isActive
-            ? 'bg-red-500 hover:bg-red-600 text-white'
-            : 'bg-green-500 hover:bg-green-600 text-white'
-        }`}
-      >
-        {isActive ? 'Stop Work' : 'Start Work'}
-      </button>
-    </div>
+        {!isActive && total > 0 && (
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+            {t('today_total')}: <span className="font-semibold text-gray-700 dark:text-slate-200">{formatDuration(total)}</span>
+          </p>
+        )}
+
+        {!isActive && total === 0 && (
+          <p className="text-sm text-gray-400 dark:text-slate-500 mb-4">{t('no_session')}</p>
+        )}
+
+        <button
+          onClick={() => setConfirm(isActive ? 'end' : 'start')}
+          disabled={startMutation.isPending || endMutation.isPending}
+          className={`w-full py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 ${isActive ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
+        >
+          {isActive ? t('end_work') : t('start_work')}
+        </button>
+      </div>
+    </>
   )
 }

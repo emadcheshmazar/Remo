@@ -8,7 +8,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rwms}"]
       interval: 5s
@@ -20,8 +20,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rwms}:${POSTGRES_PASSWORD:-rwms}@db:5432/${POSTGRES_DB:-rwms}
       SECRET_KEY: ${SECRET_KEY:-changeme_in_production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3010}
     ports:
-      - "8000:8000"
+      - "8080:8000"
     volumes:
       - ./backend:/app
     depends_on:
@@ -31,9 +32,9 @@ services:
   frontend:
     build: ./frontend
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
     ports:
-      - "3000:3000"
+      - "3010:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules

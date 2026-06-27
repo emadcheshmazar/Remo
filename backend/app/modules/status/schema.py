@@ -20,8 +20,14 @@ class StatusRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ActivityTag(str, Enum):
+    FOCUS = "FOCUS"
+    BREAK = "BREAK"
+    MEETING = "MEETING"
+
+
 class StatusUpdate(BaseModel):
-    status: StatusState
+    tag: ActivityTag | None = None
 
 
 class StatusLogRead(BaseModel):
@@ -31,3 +37,12 @@ class StatusLogRead(BaseModel):
     changed_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class PingRequest(BaseModel):
+    message: str = ""
+
+
+class PingRespondRequest(BaseModel):
+    from_user_id: str
+    reply_message: str = ""

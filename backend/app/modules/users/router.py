@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.shared.dependencies import get_current_user
-from app.modules.users.schema import UserCreate, UserRead, UserUpdate
+from app.modules.users.schema import UserCreate, UserRead, UserUpdate, SupervisorAssign
 from app.modules.users.service import UserService
 from app.modules.users.repository import UserRepository
 
@@ -19,7 +19,20 @@ async def list_users(
     current_user: dict = Depends(get_current_user),
     service: UserService = Depends(_service),
 ):
-    return await service.list_users(current_user["role"])
+    return await service.list_users(uuid.UUID(current_user["sub"]), current_user["role"])
+
+
+@router.patch("/{user_id}/supervisor", response_model=UserRead)
+async def assign_supervisor(
+    user_id: uuid.UUID,
+    data: SupervisorAssign,
+    current_user: dict = Depends(get_current_user),
+    service: UserService = Depends(_service),
+):
+    return await service.assign_supervisor(
+        user_id, data.supervisor_id,
+        uuid.UUID(current_user["sub"]), current_user["role"],
+    )
 
 
 @router.post("", response_model=UserRead, status_code=201)

@@ -2,28 +2,39 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { statusService } from '@/services/status.service'
-import type { StatusState } from '@/types'
+import { workService } from '@/services/work.service'
+import { useT } from '@/hooks/useT'
+import type { ActivityTag, StatusState } from '@/types'
 
-const LABELS: Record<StatusState, string> = {
-  AVAILABLE: 'Available',
-  OFFLINE: 'Offline',
-  BREAK: 'Break',
-  FOCUS: 'Focus',
-  MEETING: 'Meeting',
+const TAG_KEYS = { FOCUS: 'focus', BREAK: 'break_', MEETING: 'meeting' } as const
+
+const TAG_COLORS: Record<ActivityTag, string> = {
+  FOCUS: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 ring-blue-300 dark:ring-blue-600',
+  BREAK: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 ring-yellow-300 dark:ring-yellow-600',
+  MEETING: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 ring-purple-300 dark:ring-purple-600',
 }
 
-const COLORS: Record<StatusState, string> = {
-  AVAILABLE: 'bg-green-500',
-  OFFLINE: 'bg-gray-400',
-  BREAK: 'bg-yellow-400',
+const TAG_DOT: Record<ActivityTag, string> = {
   FOCUS: 'bg-blue-500',
+  BREAK: 'bg-yellow-400',
   MEETING: 'bg-purple-500',
 }
 
-const ALL: StatusState[] = ['AVAILABLE', 'BREAK', 'FOCUS', 'MEETING', 'OFFLINE']
+const TAGS: ActivityTag[] = ['FOCUS', 'BREAK', 'MEETING']
+
+function isTag(s: StatusState): s is ActivityTag {
+  return s === 'FOCUS' || s === 'BREAK' || s === 'MEETING'
+}
 
 export function StatusCard() {
+  const t = useT()
   const qc = useQueryClient()
+
+  const { data: summary } = useQuery({
+    queryKey: ['work-summary'],
+    queryFn: () => workService.getSummary().then((r) => r.data),
+    refetchInterval: 30_000,
+  })
 
   const { data: myStatus, isLoading } = useQuery({
     queryKey: ['my-status'],
@@ -32,39 +43,48 @@ export function StatusCard() {
   })
 
   const mutation = useMutation({
-    mutationFn: (s: StatusState) => statusService.updateMyStatus(s),
+    mutationFn: (tag: ActivityTag | null) => statusService.setTag(tag),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-status'] }),
   })
 
-  if (isLoading) return <div className="bg-white rounded-lg border p-6 h-40 animate-pulse" />
+  if (isLoading) return <div className="bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700 p-6 h-40 animate-pulse" />
 
-  const current: StatusState = myStatus?.status ?? 'OFFLINE'
+  const isOnline = summary?.is_active ?? false
+  const currentStatus: StatusState = myStatus?.status ?? 'OFFLINE'
+  const activeTag: ActivityTag | null = isTag(currentStatus) ? currentStatus : null
 
   return (
-    <div className="bg-white rounded-lg border p-6 w-full max-w-sm">
+    <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 w-full max-w-sm">
       <div className="flex items-center gap-2 mb-4">
-        <span className={`w-2.5 h-2.5 rounded-full ${COLORS[current]}`} />
-        <h2 className="font-medium text-gray-700">Status</h2>
-        <span className="text-sm text-gray-500 ml-auto">{LABELS[current]}</span>
+        <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-600'}`} />
+        <h2 className="font-medium text-gray-700 dark:text-slate-300">{t('status')}</h2>
+        <span className="ml-auto text-sm text-gray-500 dark:text-slate-400">
+          {isOnline ? (activeTag ? t(TAG_KEYS[activeTag]) : t('available')) : t('offline')}
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {ALL.map((s) => (
-          <button
-            key={s}
-            onClick={() => mutation.mutate(s)}
-            disabled={mutation.isPending || s === current}
-            className={`flex items-center gap-2 py-1.5 px-3 rounded text-xs font-medium transition-colors disabled:cursor-default ${
-              s === current
-                ? 'ring-2 ring-offset-1 ring-gray-300 bg-gray-100 text-gray-700'
-                : 'bg-gray-50 hover:bg-gray-100 text-gray-600'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full shrink-0 ${COLORS[s]}`} />
-            {LABELS[s]}
-          </button>
-        ))}
-      </div>
+      {!isOnline ? (
+        <p className="text-xs text-gray-400 dark:text-slate-500">{t('no_session')}</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {TAGS.map((tag) => {
+            const isActive = activeTag === tag
+            return (
+              <button
+                key={tag}
+                onClick={() => mutation.mutate(isActive ? null : tag)}
+                disabled={mutation.isPending}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
+                  isActive ? `${TAG_COLORS[tag]} ring-2 ring-offset-1 dark:ring-offset-slate-800` : 'bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-600'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? TAG_DOT[tag] : 'bg-gray-300 dark:bg-slate-500'}`} />
+                {t(TAG_KEYS[tag])}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

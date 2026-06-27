@@ -3,8 +3,8 @@ import { Providers } from './providers'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'RWMS',
-  description: 'Remote Work Management System',
+  title: 'remo',
+  description: 'کارتیمی از هر جایی',
 }
 
 export default function RootLayout({

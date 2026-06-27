@@ -14,6 +14,7 @@ export interface User {
   role: Role
   is_active: boolean
   created_at: string
+  supervisor_id: string | null
 }
 
 export interface TokenResponse {
@@ -37,7 +38,8 @@ export interface WorkSummary {
   total_minutes_today: number
 }
 
-export type StatusState = 'AVAILABLE' | 'OFFLINE' | 'BREAK' | 'FOCUS' | 'MEETING'
+export type StatusState = 'AVAILABLE' | 'OFFLINE' | 'FOCUS' | 'BREAK' | 'MEETING'
+export type ActivityTag = 'FOCUS' | 'BREAK' | 'MEETING'
 
 export interface UserStatus {
   user_id: string
@@ -66,6 +68,48 @@ export interface UserUpdate {
   full_name?: string
   is_active?: boolean
   password?: string
+}
+
+export type DayType = 'REMOTE' | 'LEAVE'
+export type ApprovalStatus = 'APPROVED' | 'REJECTED'
+
+export interface DayEntry {
+  user_id: string
+  date: string
+  day_type: DayType
+  set_by: string | null
+  approval_status: ApprovalStatus | null
+  approved_by: string | null
+  approved_minutes: number | null
+  approved_at: string | null
+}
+
+export interface DayStats {
+  date: string
+  day_type: DayType | null
+  total_work_minutes: number
+  focus_minutes: number
+  break_minutes: number
+  meeting_minutes: number
+  approval_status: ApprovalStatus | null
+  approved_by: string | null
+  approved_minutes: number | null
+}
+
+export interface PingData {
+  check_id: string
+  target_user_id: string
+  from_user_id: string
+  from_name: string
+  message: string
+}
+
+export interface PingResultData {
+  check_id: string
+  from_user_id: string
+  target_user_id: string
+  target_name: string
+  reply_message: string
 }
 
 export type EventType = 'SESSION_START' | 'SESSION_END' | 'STATUS_CHANGE' | 'REPORT_SUBMITTED'

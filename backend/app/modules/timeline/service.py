@@ -25,3 +25,6 @@ class TimelineService:
     async def get_today(self, user_id: uuid.UUID) -> list[TimelineEvent]:
         today = datetime.now(timezone.utc).date()
         return await self.repo.list_by_user_today(user_id, today)
+
+    async def get_by_date(self, user_id: uuid.UUID, day) -> list[TimelineEvent]:
+        return await self.repo.list_by_user_today(user_id, day)

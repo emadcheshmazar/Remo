@@ -1,5 +1,6 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import date as Date
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.shared.dependencies import get_current_user
@@ -29,6 +30,18 @@ async def get_my_today(
     service: TimelineService = Depends(_service),
 ):
     return await service.get_today(uuid.UUID(current_user["sub"]))
+
+
+@router.get("/{user_id}/by-date", response_model=list[TimelineEventRead])
+async def get_user_timeline_by_date(
+    user_id: uuid.UUID,
+    date: Date = Query(...),
+    current_user: dict = Depends(get_current_user),
+    service: TimelineService = Depends(_service),
+):
+    if str(user_id) != current_user["sub"] and not MANAGEABLE_ROLES.get(current_user["role"]):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    return await service.get_by_date(user_id, date)
 
 
 @router.get("/{user_id}", response_model=list[TimelineEventRead])

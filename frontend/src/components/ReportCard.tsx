@@ -1,15 +1,16 @@
-'use client'
+﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { reportService } from '@/services/report.service'
+import { useT } from '@/hooks/useT'
 
 export function ReportCard() {
+  const t = useT()
   const qc = useQueryClient()
-  const [todayText, setTodayText] = useState('')
-  const [blockersText, setBlockersText] = useState('')
-  const [tomorrowText, setTomorrowText] = useState('')
+  const [text, setText] = useState('')
   const [justSaved, setJustSaved] = useState(false)
+  const taRef = useRef<HTMLTextAreaElement>(null)
 
   const { data: report, isLoading } = useQuery({
     queryKey: ['report-today'],
@@ -17,20 +18,12 @@ export function ReportCard() {
   })
 
   useEffect(() => {
-    if (report) {
-      setTodayText(report.today_text)
-      setBlockersText(report.blockers_text)
-      setTomorrowText(report.tomorrow_text)
-    }
+    if (report) setText(report.today_text)
   }, [report])
 
   const mutation = useMutation({
     mutationFn: () =>
-      reportService.upsertToday({
-        today_text: todayText,
-        blockers_text: blockersText,
-        tomorrow_text: tomorrowText,
-      }),
+      reportService.upsertToday({ today_text: text, blockers_text: '', tomorrow_text: '' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['report-today'] })
       setJustSaved(true)
@@ -38,68 +31,50 @@ export function ReportCard() {
     },
   })
 
-  if (isLoading) return <div className="bg-white rounded-lg border p-6 animate-pulse h-64 w-full max-w-lg" />
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const ta = taRef.current
+    if (!ta) return
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const insert = '\n• '
+    const next = text.slice(0, start) + insert + text.slice(end)
+    setText(next)
+    requestAnimationFrame(() => {
+      ta.selectionStart = ta.selectionEnd = start + insert.length
+    })
+  }
+
+  if (isLoading) return <div className="bg-white dark:bg-slate-800 rounded-lg border dark:border-slate-700 p-6 animate-pulse h-40 w-full max-w-lg" />
 
   const savedAt = report?.updated_at
     ? new Date(report.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : null
 
   return (
-    <div className="bg-white rounded-lg border p-6 w-full max-w-lg">
-      <h2 className="font-medium text-gray-700 mb-4">Daily Report</h2>
-
-      <div className="space-y-3">
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-            Today
-          </label>
-          <textarea
-            value={todayText}
-            onChange={(e) => setTodayText(e.target.value)}
-            placeholder="What did you work on today?"
-            rows={3}
-            className="w-full border rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-200 text-gray-700 placeholder-gray-300"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-            Blockers
-          </label>
-          <textarea
-            value={blockersText}
-            onChange={(e) => setBlockersText(e.target.value)}
-            placeholder="Any blockers or issues?"
-            rows={2}
-            className="w-full border rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-200 text-gray-700 placeholder-gray-300"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-            Tomorrow
-          </label>
-          <textarea
-            value={tomorrowText}
-            onChange={(e) => setTomorrowText(e.target.value)}
-            placeholder="What's planned for tomorrow?"
-            rows={2}
-            className="w-full border rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-200 text-gray-700 placeholder-gray-300"
-          />
-        </div>
-
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-xs text-gray-400">
-            {savedAt ? `Last saved ${savedAt}` : 'Not saved yet'}
-          </span>
-          <button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-            className="bg-gray-900 text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-gray-700 disabled:opacity-50 transition-colors min-w-[72px]"
-          >
-            {justSaved ? 'Saved ✓' : mutation.isPending ? 'Saving...' : 'Save'}
-          </button>
-        </div>
+    <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-6 w-full max-w-lg">
+      <h2 className="font-medium text-gray-700 dark:text-slate-300 mb-3">{t('daily_report')}</h2>
+      <textarea
+        ref={taRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={t('report_placeholder')}
+        rows={6}
+        className="w-full border border-gray-200 dark:border-slate-600 rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-slate-500 text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-700 placeholder-gray-300 dark:placeholder-slate-500 font-mono leading-6"
+      />
+      <div className="flex items-center justify-between pt-2">
+        <span className="text-xs text-gray-400 dark:text-slate-500">
+          {savedAt ? `${t('last_saved')} ${savedAt}` : t('not_saved')}
+        </span>
+        <button
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+          className="bg-gray-900 dark:bg-slate-600 text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-gray-700 dark:hover:bg-slate-500 disabled:opacity-50 transition-colors min-w-[72px]"
+        >
+          {justSaved ? t('saved') : mutation.isPending ? t('saving') : t('save')}
+        </button>
       </div>
     </div>
   )
