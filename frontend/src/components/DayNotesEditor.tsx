@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { calendarService } from '@/services/calendar.service'
 import { useT } from '@/hooks/useT'
 
@@ -13,37 +13,33 @@ interface Props {
 
 export function DayNotesEditor({ userId, isoDate, initialNotes, onSaved }: Props) {
   const t = useT()
+  // what is currently saved on the server
+  const [savedText, setSavedText] = useState(initialNotes ?? '')
+  // what is in the textarea right now
   const [text, setText] = useState(initialNotes ?? '')
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
 
+  // sync when parent switches day or user
   useEffect(() => {
+    setSavedText(initialNotes ?? '')
     setText(initialNotes ?? '')
-    setSaveStatus('idle')
+    setJustSaved(false)
   }, [userId, isoDate, initialNotes])
 
-  async function persist(value: string) {
-    setSaveStatus('saving')
+  const isDirty = text !== savedText
+
+  async function handleSave() {
+    setSaving(true)
     try {
-      await calendarService.setNotes(userId, isoDate, value.trim() || null)
-      setSaveStatus('saved')
+      await calendarService.setNotes(userId, isoDate, text.trim() || null)
+      setSavedText(text)
+      setJustSaved(true)
       onSaved?.()
-      setTimeout(() => setSaveStatus('idle'), 2000)
-    } catch {
-      setSaveStatus('idle')
+      setTimeout(() => setJustSaved(false), 2500)
+    } finally {
+      setSaving(false)
     }
-  }
-
-  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const value = e.target.value
-    setText(value)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => persist(value), 1400)
-  }
-
-  function handleBlur() {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    persist(text)
   }
 
   return (
@@ -52,22 +48,29 @@ export function DayNotesEditor({ userId, isoDate, initialNotes, onSaved }: Props
         <span className="text-[10px] font-semibold text-indigo-400 dark:text-indigo-500 uppercase tracking-wide flex items-center gap-1">
           📋 {t('day_notes_hint')}
         </span>
-        {saveStatus === 'saving' && (
-          <span className="text-[10px] text-gray-400 dark:text-slate-500 animate-pulse">{t('saving')}</span>
-        )}
-        {saveStatus === 'saved' && (
+        {justSaved && !isDirty && (
           <span className="text-[10px] text-green-500 dark:text-green-400">{t('saved')}</span>
         )}
       </div>
+
       <textarea
         value={text}
-        onChange={handleChange}
-        onBlur={handleBlur}
+        onChange={e => { setText(e.target.value); setJustSaved(false) }}
         placeholder={t('day_notes_placeholder')}
         rows={4}
         dir="rtl"
         className="w-full text-xs border border-indigo-100 dark:border-indigo-900/50 rounded-lg px-2.5 py-2 bg-indigo-50/40 dark:bg-indigo-950/20 text-gray-700 dark:text-slate-300 placeholder-gray-300 dark:placeholder-slate-600 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-300 dark:focus:ring-indigo-700 leading-relaxed"
       />
+
+      {isDirty && (
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="mt-1.5 w-full py-1.5 rounded-lg text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white transition-colors"
+        >
+          {saving ? t('saving') : t('save')}
+        </button>
+      )}
     </div>
   )
 }

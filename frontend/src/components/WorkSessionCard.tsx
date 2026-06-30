@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { workService } from '@/services/work.service'
+import { useAuthStore } from '@/store/auth.store'
+import { useSSEStore } from '@/store/sse.store'
 import { useT } from '@/hooks/useT'
 
 function formatDuration(minutes: number): string {
@@ -24,6 +26,16 @@ export function WorkSessionCard() {
   const qc = useQueryClient()
   const [elapsed, setElapsed] = useState('00:00:00')
   const [confirm, setConfirm] = useState<'start' | 'end' | null>(null)
+
+  const { user } = useAuthStore()
+  const statusUpdatedAt = useSSEStore(s => user ? s.statusMap[user.id]?.updated_at : undefined)
+
+  // Refresh when supervisor/scheduler changes this user's session via SSE
+  useEffect(() => {
+    if (!statusUpdatedAt) return
+    qc.invalidateQueries({ queryKey: ['work-summary'] })
+    qc.invalidateQueries({ queryKey: ['timeline-today'] })
+  }, [statusUpdatedAt])
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ['work-summary'],
