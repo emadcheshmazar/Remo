@@ -93,6 +93,18 @@ class CalendarRepository:
         await self.session.refresh(existing)
         return existing
 
+    async def set_notes(
+        self, user_id: uuid.UUID, day: Date, notes: str | None
+    ) -> DayEntry | None:
+        existing = await self.get(user_id, day)
+        if not existing:
+            return None
+        existing.notes = notes or None
+        self.session.add(existing)
+        await self.session.commit()
+        await self.session.refresh(existing)
+        return existing
+
     async def delete(self, user_id: uuid.UUID, day: Date) -> bool:
         result = await self.session.execute(
             delete(DayEntry).where(and_(DayEntry.user_id == user_id, DayEntry.date == day))

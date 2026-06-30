@@ -78,6 +78,7 @@ export interface DayEntry {
   date: string
   day_type: DayType
   set_by: string | null
+  notes: string | null
   approval_status: ApprovalStatus | null
   approved_by: string | null
   approved_minutes: number | null

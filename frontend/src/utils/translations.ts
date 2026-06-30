@@ -87,6 +87,10 @@ export const translations = {
     search: 'جستجو...',
     assign_supervisor: 'اختصاص سرپرست',
     no_supervisor: 'بدون سرپرست',
+    // Day notes
+    day_notes: 'تسک و یادداشت‌های روز',
+    day_notes_placeholder: '• تسک‌ها و یادداشت‌های امروز را بنویسید...',
+    day_notes_hint: 'یادداشت سرپرست',
     // Day panel
     set_remote: 'ریموت',
     set_leave: 'مرخصی',
@@ -219,6 +223,10 @@ export const translations = {
     search: 'Search...',
     assign_supervisor: 'Assign Supervisor',
     no_supervisor: 'No Supervisor',
+    // Day notes
+    day_notes: 'Daily Tasks & Notes',
+    day_notes_placeholder: '• Write today\'s tasks and notes...',
+    day_notes_hint: 'Supervisor note',
     // Day panel
     set_remote: 'Remote',
     set_leave: 'Leave',

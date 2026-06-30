@@ -9,6 +9,7 @@ import { WorkSessionCard } from '@/components/WorkSessionCard'
 import { StatusCard } from '@/components/StatusCard'
 import { ReportCard } from '@/components/ReportCard'
 import { TimelineCard } from '@/components/TimelineCard'
+import { DayNotesCard } from '@/components/DayNotesCard'
 import { calendarService } from '@/services/calendar.service'
 import { useT } from '@/hooks/useT'
 
@@ -57,6 +58,11 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          {todayEntry?.notes && (
+            <div className="mb-6 flex flex-wrap gap-6">
+              <DayNotesCard notes={todayEntry.notes} />
+            </div>
+          )}
           <div className="flex flex-wrap gap-6">
             <WorkSessionCard />
             <StatusCard />

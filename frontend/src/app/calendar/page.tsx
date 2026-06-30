@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth.store'
 import { AppLayout } from '@/components/AppLayout'
 import { JalaliCalendar, DayMeta } from '@/components/JalaliCalendar'
 import { DayDetail } from '@/components/DayDetail'
+import { DayNotesEditor } from '@/components/DayNotesEditor'
 import { calendarService } from '@/services/calendar.service'
 import { todayJalali, jalaliToIso, formatJalali, isoToJalali, jalaliMonthIsoRange } from '@/utils/jalali'
 import { useT } from '@/hooks/useT'
@@ -261,36 +262,48 @@ function CalendarContent() {
 
                       {/* Set REMOTE/LEAVE buttons — only for editors who can view this user */}
                       {canEdit && canViewThis && (
-                        <div className="flex gap-1 px-2.5 pb-2 pt-0">
-                          <button
-                            disabled={setMutation.isPending || isLocked}
-                            onClick={(e) => { e.stopPropagation(); setMutation.mutate({ userId: u.id, dt: 'REMOTE' }) }}
-                            title={isLocked ? 'کارکرد تأیید شده — ابتدا تأیید را پاک کنید' : undefined}
-                            className={`flex-1 text-[11px] py-1 rounded font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                              dt === 'REMOTE' ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50'
-                            }`}
-                          >
-                            {t('set_remote')}
-                          </button>
-                          <button
-                            disabled={setMutation.isPending || isLocked}
-                            onClick={(e) => { e.stopPropagation(); setMutation.mutate({ userId: u.id, dt: 'LEAVE' }) }}
-                            title={isLocked ? 'کارکرد تأیید شده — ابتدا تأیید را پاک کنید' : undefined}
-                            className={`flex-1 text-[11px] py-1 rounded font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                              dt === 'LEAVE' ? 'bg-red-500 text-white' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50'
-                            }`}
-                          >
-                            {t('set_leave')}
-                          </button>
-                          {dt && (
+                        <div className="px-2.5 pb-2 pt-0">
+                          <div className="flex gap-1">
                             <button
                               disabled={setMutation.isPending || isLocked}
-                              onClick={(e) => { e.stopPropagation(); setMutation.mutate({ userId: u.id, dt: null }) }}
+                              onClick={(e) => { e.stopPropagation(); setMutation.mutate({ userId: u.id, dt: 'REMOTE' }) }}
                               title={isLocked ? 'کارکرد تأیید شده — ابتدا تأیید را پاک کنید' : undefined}
-                              className="px-2 text-[11px] py-1 rounded bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                              className={`flex-1 text-[11px] py-1 rounded font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                                dt === 'REMOTE' ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+                              }`}
                             >
-                              ✕
+                              {t('set_remote')}
                             </button>
+                            <button
+                              disabled={setMutation.isPending || isLocked}
+                              onClick={(e) => { e.stopPropagation(); setMutation.mutate({ userId: u.id, dt: 'LEAVE' }) }}
+                              title={isLocked ? 'کارکرد تأیید شده — ابتدا تأیید را پاک کنید' : undefined}
+                              className={`flex-1 text-[11px] py-1 rounded font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                                dt === 'LEAVE' ? 'bg-red-500 text-white' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50'
+                              }`}
+                            >
+                              {t('set_leave')}
+                            </button>
+                            {dt && (
+                              <button
+                                disabled={setMutation.isPending || isLocked}
+                                onClick={(e) => { e.stopPropagation(); setMutation.mutate({ userId: u.id, dt: null }) }}
+                                title={isLocked ? 'کارکرد تأیید شده — ابتدا تأیید را پاک کنید' : undefined}
+                                className="px-2 text-[11px] py-1 rounded bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Notes textarea — only for REMOTE entries */}
+                          {dt === 'REMOTE' && (
+                            <DayNotesEditor
+                              userId={u.id}
+                              isoDate={selectedIso}
+                              initialNotes={entry?.notes ?? null}
+                              onSaved={() => qc.invalidateQueries({ queryKey: ['calendar-team', jy, jm] })}
+                            />
                           )}
                         </div>
                       )}

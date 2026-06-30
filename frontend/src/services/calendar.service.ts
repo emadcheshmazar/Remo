@@ -20,6 +20,9 @@ export const calendarService = {
   setDayType: (userId: string, date: string, day_type: DayType) =>
     api.put<DayEntry>(`/api/v1/calendar/${userId}/${date}`, { day_type }),
 
+  setNotes: (userId: string, date: string, notes: string | null) =>
+    api.patch<DayEntry>(`/api/v1/calendar/${userId}/${date}/notes`, { notes }),
+
   clearDay: (userId: string, date: string) =>
     api.delete(`/api/v1/calendar/${userId}/${date}`),
 

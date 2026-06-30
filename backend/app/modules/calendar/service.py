@@ -104,6 +104,25 @@ class CalendarService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day entry not found")
         return entry
 
+    async def set_notes(
+        self,
+        actor_id: uuid.UUID,
+        actor_role: str,
+        user_id: uuid.UUID,
+        day: Date,
+        notes: str | None,
+    ) -> DayEntry:
+        self._check_can_edit(actor_id, actor_role)
+        if actor_role == "SUPERVISOR":
+            await self._check_supervisor_scope(actor_id, user_id)
+        entry = await self.repo.set_notes(user_id, day, notes)
+        if entry is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Day entry not found — set a day type first",
+            )
+        return entry
+
     async def get_day_stats(self, user_id: uuid.UUID, day: Date) -> dict:
         sessions = await self.work_repo.get_by_date(user_id, day)
         total_work = sum(s.duration_minutes or 0 for s in sessions if s.ended_at is not None)

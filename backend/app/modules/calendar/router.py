@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.shared.dependencies import get_current_user
-from app.modules.calendar.schema import DayEntryRead, DayEntryUpsert, DayStatsRead, ApprovalRequest
+from app.modules.calendar.schema import DayEntryRead, DayEntryUpsert, DayNotesUpdate, DayStatsRead, ApprovalRequest
 from app.modules.calendar.service import CalendarService
 from app.modules.calendar.repository import CalendarRepository
 from app.modules.work.repository import WorkRepository
@@ -93,6 +93,18 @@ async def set_day_entry(
 ):
     actor_id = uuid.UUID(current_user["sub"])
     return await svc.set_day(actor_id, current_user["role"], user_id, date, body.day_type.value)
+
+
+@router.patch("/{user_id}/{date}/notes", response_model=DayEntryRead)
+async def set_day_notes(
+    user_id: uuid.UUID,
+    date: Date,
+    body: DayNotesUpdate,
+    current_user: dict = Depends(get_current_user),
+    svc: CalendarService = Depends(_svc),
+):
+    actor_id = uuid.UUID(current_user["sub"])
+    return await svc.set_notes(actor_id, current_user["role"], user_id, date, body.notes)
 
 
 @router.post("/{user_id}/{date}/approve", response_model=DayEntryRead)

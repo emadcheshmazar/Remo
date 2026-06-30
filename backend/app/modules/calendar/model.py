@@ -28,6 +28,9 @@ class DayEntry(SQLModel, table=True):
     approved_minutes: int | None = Field(default=None, sa_column=sa.Column(sa.Integer(), nullable=True))
     approved_at: datetime | None = Field(default=None, sa_column=sa.Column(sa.DateTime(timezone=True), nullable=True))
 
+    # Supervisor notes — shown on the member's dashboard
+    notes: str | None = Field(default=None, sa_column=sa.Column(sa.Text(), nullable=True))
+
     __table_args__ = (
         sa.UniqueConstraint("user_id", "date", name="uq_day_entries_user_date"),
     )

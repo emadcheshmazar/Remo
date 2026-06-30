@@ -18,6 +18,10 @@ class DayEntryUpsert(BaseModel):
     day_type: DayType
 
 
+class DayNotesUpdate(BaseModel):
+    notes: str | None = None
+
+
 class ApprovalRequest(BaseModel):
     status: ApprovalStatus
     approved_minutes: int | None = None  # None = approve all hours
@@ -28,6 +32,7 @@ class DayEntryRead(BaseModel):
     date: Date
     day_type: DayType
     set_by: uuid.UUID | None = None
+    notes: str | None = None
     approval_status: str | None = None
     approved_by: uuid.UUID | None = None
     approved_minutes: int | None = None
