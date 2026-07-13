@@ -65,9 +65,11 @@ export interface UserCreate {
 }
 
 export interface UserUpdate {
+  username?: string
   full_name?: string
   is_active?: boolean
   password?: string
+  role?: Role
 }
 
 export type DayType = 'REMOTE' | 'LEAVE'

@@ -52,7 +52,7 @@ async def get_user(
     current_user: dict = Depends(get_current_user),
     service: UserService = Depends(_service),
 ):
-    return await service.get_user(user_id, current_user["role"])
+    return await service.get_user(user_id, uuid.UUID(current_user["sub"]), current_user["role"])
 
 
 @router.patch("/{user_id}", response_model=UserRead)
@@ -62,7 +62,9 @@ async def update_user(
     current_user: dict = Depends(get_current_user),
     service: UserService = Depends(_service),
 ):
-    return await service.update_user(user_id, data, current_user["role"])
+    return await service.update_user(
+        user_id, data, uuid.UUID(current_user["sub"]), current_user["role"]
+    )
 
 
 @router.delete("/{user_id}", status_code=204)
@@ -71,4 +73,4 @@ async def delete_user(
     current_user: dict = Depends(get_current_user),
     service: UserService = Depends(_service),
 ):
-    await service.delete_user(user_id, current_user["role"])
+    await service.delete_user(user_id, uuid.UUID(current_user["sub"]), current_user["role"])

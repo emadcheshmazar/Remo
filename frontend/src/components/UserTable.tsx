@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { userService } from '@/services/user.service'
 import { useAuthStore } from '@/store/auth.store'
 import { useT } from '@/hooks/useT'
+import { getErrorMessage } from '@/utils/errors'
+import { PasswordInput } from '@/components/PasswordInput'
 import type { Role, User } from '@/types'
 
 const ROLE_BADGE: Record<Role, string> = {
@@ -20,7 +22,8 @@ interface Props {
 }
 
 const EMPTY_CREATE = (role: Role) => ({ username: '', password: '', full_name: '', role })
-const EMPTY_EDIT = (u: User) => ({ full_name: u.full_name, is_active: u.is_active, password: '' })
+const PASSWORD_UNCHANGED_VALUE = '********'
+const EMPTY_EDIT = (u: User) => ({ username: u.username, full_name: u.full_name, is_active: u.is_active, password: PASSWORD_UNCHANGED_VALUE, role: u.role })
 
 export function UserTable({ title, creatableRoles }: Props) {
   const qc = useQueryClient()
@@ -30,9 +33,13 @@ export function UserTable({ title, creatableRoles }: Props) {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [createForm, setCreateForm] = useState(EMPTY_CREATE(creatableRoles[0]))
-  const [editForm, setEditForm] = useState({ full_name: '', is_active: true, password: '' })
+  const [editForm, setEditForm] = useState<{ username: string; full_name: string; is_active: boolean; password: string; role: Role }>({
+    username: '', full_name: '', is_active: true, password: '', role: creatableRoles[0],
+  })
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const showSupervisorColumn = me?.role === 'MANAGER'
+  const tableColSpan = showSupervisorColumn ? 6 : 5
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
@@ -42,28 +49,32 @@ export function UserTable({ title, creatableRoles }: Props) {
 
   const createMutation = useMutation({
     mutationFn: () => userService.create(createForm),
+    meta: { suppressToast: true },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
       setShowCreate(false)
       setCreateForm(EMPTY_CREATE(creatableRoles[0]))
       setError('')
     },
-    onError: (e: any) => setError(e.response?.data?.detail || t('error')),
+    onError: (e: unknown) => setError(getErrorMessage(e)),
   })
 
   const updateMutation = useMutation({
     mutationFn: () =>
       userService.update(editingUser!.id, {
+        username: editForm.username,
         full_name: editForm.full_name || undefined,
         is_active: editForm.is_active,
-        password: editForm.password || undefined,
+        password: editForm.password && editForm.password !== PASSWORD_UNCHANGED_VALUE ? editForm.password : undefined,
+        role: editForm.role,
       }),
+    meta: { suppressToast: true },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
       setEditingUser(null)
       setError('')
     },
-    onError: (e: any) => setError(e.response?.data?.detail || t('error')),
+    onError: (e: unknown) => setError(getErrorMessage(e)),
   })
 
   const deleteMutation = useMutation({
@@ -126,9 +137,8 @@ export function UserTable({ title, creatableRoles }: Props) {
               name="new-username"
               className={inputCls}
             />
-            <input
+            <PasswordInput
               placeholder={t('password')}
-              type="password"
               value={createForm.password}
               onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
               autoComplete="new-password"
@@ -162,14 +172,15 @@ export function UserTable({ title, creatableRoles }: Props) {
         </div>
       )}
 
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[760px] text-sm">
         <thead>
           <tr className="border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/40">
             <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{t('full_name')}</th>
             <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{t('username')}</th>
             <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{t('role')}</th>
             <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{t('active')}</th>
-            {me?.role === 'MANAGER' && (
+            {showSupervisorColumn && (
               <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{t('assign_supervisor')}</th>
             )}
             <th className="px-6 py-3" />
@@ -178,7 +189,7 @@ export function UserTable({ title, creatableRoles }: Props) {
         <tbody className="divide-y divide-gray-50 dark:divide-slate-700">
           {!filteredUsers.length && (
             <tr>
-              <td colSpan={me?.role === 'MANAGER' ? 6 : 5} className="px-6 py-8 text-center text-gray-400 dark:text-slate-500 text-sm">
+              <td colSpan={tableColSpan} className="px-6 py-8 text-center text-gray-400 dark:text-slate-500 text-sm">
                 {search ? t('no_users') : t('no_users')}
               </td>
             </tr>
@@ -196,7 +207,7 @@ export function UserTable({ title, creatableRoles }: Props) {
                     {u.is_active ? t('active') : t('inactive')}
                   </span>
                 </td>
-                {me?.role === 'MANAGER' && (
+                {showSupervisorColumn && (
                   <td className="px-6 py-3">
                     {u.role === 'MEMBER' ? (
                       <select
@@ -234,21 +245,44 @@ export function UserTable({ title, creatableRoles }: Props) {
               </tr>
               {editingUser?.id === u.id && (
                 <tr className="bg-blue-50 dark:bg-blue-950/30">
-                  <td colSpan={5} className="px-6 py-4">
-                    <div className="grid grid-cols-3 gap-3 max-w-xl">
+                  <td colSpan={tableColSpan} className="px-6 py-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 max-w-4xl">
+                      <input
+                        placeholder={t('username')}
+                        value={editForm.username}
+                        onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))}
+                        autoComplete="off"
+                        name="edit-username"
+                        className={editInputCls}
+                      />
                       <input
                         placeholder={t('full_name')}
                         value={editForm.full_name}
                         onChange={(e) => setEditForm((f) => ({ ...f, full_name: e.target.value }))}
                         className={editInputCls}
                       />
-                      <input
+                      <PasswordInput
                         placeholder={`${t('password')} (optional)`}
-                        type="password"
                         value={editForm.password}
+                        onFocus={() => {
+                          if (editForm.password === PASSWORD_UNCHANGED_VALUE) {
+                            setEditForm((f) => ({ ...f, password: '' }))
+                          }
+                        }}
                         onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))}
+                        autoComplete="new-password"
+                        name="edit-password"
                         className={editInputCls}
                       />
+                      <select
+                        value={editForm.role}
+                        onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value as Role }))}
+                        className={`${editInputCls} cursor-pointer`}
+                      >
+                        {creatableRoles.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
                       <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
                         <input
                           type="checkbox"
@@ -277,6 +311,7 @@ export function UserTable({ title, creatableRoles }: Props) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }

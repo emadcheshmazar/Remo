@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { AppVersion } from '@/components/AppVersion'
 import { Providers } from './providers'
 import './globals.css'
 
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="bg-gray-50 text-gray-900">
         <Providers>{children}</Providers>
+        <AppVersion />
       </body>
     </html>
   )

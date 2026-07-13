@@ -63,14 +63,17 @@ class UserRepository:
         )
         return list(result.scalars().all())
 
-    async def list_teammates(self, supervisor_id: uuid.UUID) -> list[User]:
-        """Supervisor + all their members — used for calendar visibility."""
-        result = await self.session.execute(
-            select(User)
-            .where(or_(User.id == supervisor_id, User.supervisor_id == supervisor_id))
-            .order_by(User.created_at.desc())
-        )
-        return list(result.scalars().all())
+    async def find_manager_id(self, user: User) -> uuid.UUID | None:
+        """Resolve the MANAGER that owns this member's org, via their supervisor or creator."""
+        candidate_id = user.supervisor_id or user.created_by
+        if not candidate_id:
+            return None
+        candidate = await self.get_by_id(candidate_id)
+        if candidate is None:
+            return None
+        if candidate.role == UserRole.MANAGER:
+            return candidate.id
+        return candidate.created_by
 
     async def create(self, user: User) -> User:
         self.session.add(user)

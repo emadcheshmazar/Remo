@@ -6,6 +6,7 @@ from app.modules.users.schema import UserCreate, UserUpdate, PasswordChange
 from app.modules.users.repository import UserRepository
 from app.core.security import hash_password, verify_password
 from app.shared.roles import MANAGEABLE_ROLES, UserRole
+from app.shared.scope import resolve_owned_user
 
 
 class UserService:
@@ -43,12 +44,10 @@ class UserService:
         )
         return await self.repo.create(user)
 
-    async def get_user(self, user_id: uuid.UUID, actor_role: str) -> User:
-        user = await self.repo.get_by_id(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        self._assert_can_manage(actor_role, user.role)
-        return user
+    async def get_user(self, user_id: uuid.UUID, actor_id: uuid.UUID, actor_role: str) -> User:
+        target = await resolve_owned_user(self.repo, actor_id, actor_role, user_id)
+        self._assert_can_manage(actor_role, target.role)
+        return target
 
     async def list_users(self, actor_id: uuid.UUID, actor_role: str) -> list[User]:
         if actor_role == UserRole.ADMIN:
@@ -60,21 +59,22 @@ class UserService:
         return []
 
     async def list_users_for_calendar(self, actor_id: uuid.UUID, actor_role: str) -> list[User]:
-        """Expanded visibility for calendar — everyone sees their org."""
+        """Expanded visibility for calendar — everyone sees their whole
+        manager's org (all supervisors + members), not just their own direct
+        team. This only governs the plain remote/leave listing — who can open
+        someone else's day *detail* is a separate, narrower check."""
         if actor_role == UserRole.ADMIN:
             return []
         if actor_role == UserRole.MANAGER:
             return await self.repo.list_for_manager(actor_id)
-        if actor_role == UserRole.SUPERVISOR:
-            # Their members + themselves
-            members = await self.repo.list_for_supervisor(actor_id)
-            self_user = await self.repo.get_by_id(actor_id)
-            return ([self_user] if self_user else []) + members
-        # MEMBER: see supervisor + teammates
+        # SUPERVISOR and MEMBER: everyone under the same manager.
         actor = await self.repo.get_by_id(actor_id)
-        if actor and actor.supervisor_id:
-            return await self.repo.list_teammates(actor.supervisor_id)
-        return [actor] if actor else []
+        if not actor:
+            return []
+        manager_id = await self.repo.find_manager_id(actor)
+        if manager_id:
+            return await self.repo.list_for_manager(manager_id)
+        return [actor]
 
     async def assign_supervisor(
         self,
@@ -85,8 +85,8 @@ class UserService:
     ) -> User:
         if actor_role != UserRole.MANAGER:
             raise HTTPException(status_code=403, detail="Only managers can assign supervisors")
-        member = await self.repo.get_by_id(member_id)
-        if not member or member.role != UserRole.MEMBER:
+        member = await resolve_owned_user(self.repo, actor_id, actor_role, member_id)
+        if member.role != UserRole.MEMBER:
             raise HTTPException(status_code=404, detail="Member not found")
         if supervisor_id:
             supervisor = await self.repo.get_by_id(supervisor_id)
@@ -100,24 +100,34 @@ class UserService:
         return await self.repo.update(member)
 
     async def update_user(
-        self, user_id: uuid.UUID, data: UserUpdate, actor_role: str
+        self, user_id: uuid.UUID, data: UserUpdate, actor_id: uuid.UUID, actor_role: str
     ) -> User:
-        user = await self.repo.get_by_id(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        user = await resolve_owned_user(self.repo, actor_id, actor_role, user_id)
         self._assert_can_manage(actor_role, user.role)
+        if data.username is not None and data.username != user.username:
+            if await self.repo.get_by_username(data.username):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Username already exists",
+                )
+            user.username = data.username
         if data.full_name is not None:
             user.full_name = data.full_name
         if data.is_active is not None:
             user.is_active = data.is_active
         if data.password is not None:
             user.password_hash = hash_password(data.password)
+        if data.role is not None and data.role != user.role:
+            # Only allow reassigning to a role the actor is itself allowed to
+            # assign — the same rule that governs who they can create.
+            self._assert_can_manage(actor_role, data.role)
+            user.role = data.role
+            if data.role != UserRole.MEMBER:
+                user.supervisor_id = None
         return await self.repo.update(user)
 
-    async def delete_user(self, user_id: uuid.UUID, actor_role: str) -> None:
-        user = await self.repo.get_by_id(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+    async def delete_user(self, user_id: uuid.UUID, actor_id: uuid.UUID, actor_role: str) -> None:
+        user = await resolve_owned_user(self.repo, actor_id, actor_role, user_id)
         self._assert_can_manage(actor_role, user.role)
         await self.repo.delete(user)
 

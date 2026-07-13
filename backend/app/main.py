@@ -1,11 +1,16 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager, suppress
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.api.v1.router import router as api_router
 from app.core.seed import seed_admin
 from app.core.config import settings
 from app.core.scheduler import close_stale_sessions, midnight_scheduler
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -21,7 +26,7 @@ async def lifespan(app: FastAPI):
         await task
 
 
-app = FastAPI(title="RWMS API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="RWMS API", version="1.1.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,6 +37,30 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Collapse pydantic's list-of-errors payload into one readable message."""
+    errors = exc.errors()
+    message = "Invalid request"
+    if errors:
+        first = errors[0]
+        message = first["msg"]
+        if message.startswith("Value error, "):
+            message = message[len("Value error, "):]
+        # loc is like ("body", "username") — prefix the field name when there is one
+        field = ".".join(str(p) for p in first["loc"] if p != "body")
+        if field:
+            message = f"{field}: {message}"
+    return JSONResponse(status_code=422, content={"detail": message})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Never leak a raw traceback to the client — log it and return a clear message."""
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error. Please try again."})
 
 
 @app.get("/health")

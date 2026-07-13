@@ -56,7 +56,7 @@
 ## پیش‌نیازها
 
 - **Docker Desktop** (شامل Docker Compose) — نسخه 24+
-- پورت‌های `8080` (API) و `3010` (فرانت) آزاد باشند
+- پورت‌های `8080` (API) و `3210` (فرانت) آزاد باشند
 
 > برای اجرای محلی بدون Docker: Python 3.12+، Node.js 20+، PostgreSQL 16
 
@@ -84,7 +84,7 @@ POSTGRES_USER=rwms
 POSTGRES_PASSWORD=rwms
 POSTGRES_DB=rwms
 SECRET_KEY=changeme_in_production
-CORS_ORIGINS=http://localhost:3010
+CORS_ORIGINS=http://localhost:3210
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
@@ -105,7 +105,7 @@ docker compose up --build
 
 | سرویس | آدرس |
 |-------|------|
-| فرانت‌اند | http://localhost:3010 |
+| فرانت‌اند | http://localhost:3210 |
 | API بک‌اند | http://localhost:8080 |
 | مستندات API | http://localhost:8080/docs |
 
@@ -130,7 +130,7 @@ docker compose up --build
 | `POSTGRES_PASSWORD` | `rwms` | رمز PostgreSQL |
 | `POSTGRES_DB` | `rwms` | نام دیتابیس |
 | `SECRET_KEY` | `changeme_in_production` | کلید امضای JWT — **حتماً عوض کنید** |
-| `CORS_ORIGINS` | `http://localhost:3010` | origin مجاز برای CORS (چند origin با `,` جدا) |
+| `CORS_ORIGINS` | `http://localhost:3210` | origin مجاز برای CORS (چند origin با `,` جدا) |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | آدرس API برای فرانت‌اند |
 
 ### بک‌اند مجزا (`backend/.env`)
@@ -140,7 +140,7 @@ docker compose up --build
 ```env
 DATABASE_URL=postgresql+asyncpg://rwms:rwms@localhost:5432/rwms
 SECRET_KEY=changeme_in_production
-CORS_ORIGINS=http://localhost:3010
+CORS_ORIGINS=http://localhost:3210
 ```
 
 ---
