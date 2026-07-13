@@ -6,6 +6,7 @@ import { queryClient } from '@/lib/query-client'
 import { useAuthStore } from '@/store/auth.store'
 import { useThemeStore } from '@/store/theme.store'
 import { useLocaleStore } from '@/store/locale.store'
+import { Toast } from '@/components/Toast'
 import api from '@/services/api'
 import type { Me } from '@/types'
 
@@ -56,6 +57,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthInitializer />
       <ThemeInitializer />
       {children}
+      <Toast />
     </QueryClientProvider>
   )
 }

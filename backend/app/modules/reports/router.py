@@ -1,14 +1,16 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import date as Date
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.shared.dependencies import get_current_user
-from app.shared.roles import MANAGEABLE_ROLES
+from app.shared.scope import resolve_owned_user
 from app.modules.reports.schema import ReportRead, ReportUpsert
 from app.modules.reports.service import ReportService
 from app.modules.reports.repository import ReportRepository
 from app.modules.timeline.service import TimelineService
 from app.modules.timeline.repository import TimelineRepository
+from app.modules.users.repository import UserRepository
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -19,6 +21,10 @@ def _service(session: AsyncSession = Depends(get_session)) -> ReportService:
 
 def _timeline(session: AsyncSession = Depends(get_session)) -> TimelineService:
     return TimelineService(TimelineRepository(session))
+
+
+def _user_repo(session: AsyncSession = Depends(get_session)) -> UserRepository:
+    return UserRepository(session)
 
 
 @router.get("/today", response_model=ReportRead | None)
@@ -55,21 +61,21 @@ async def list_user_reports(
     user_id: uuid.UUID,
     current_user: dict = Depends(get_current_user),
     service: ReportService = Depends(_service),
+    user_repo: UserRepository = Depends(_user_repo),
 ):
-    if str(user_id) == current_user["sub"]:
-        return await service.list_by_user(user_id)
-    if not MANAGEABLE_ROLES.get(current_user["role"]):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    actor_id = uuid.UUID(current_user["sub"])
+    await resolve_owned_user(user_repo, actor_id, current_user["role"], user_id)
     return await service.list_by_user(user_id)
 
 
 @router.get("/{user_id}/{date}", response_model=ReportRead | None)
 async def get_user_report_by_date(
     user_id: uuid.UUID,
-    date: str,
+    date: Date,
     current_user: dict = Depends(get_current_user),
     service: ReportService = Depends(_service),
+    user_repo: UserRepository = Depends(_user_repo),
 ):
-    if str(user_id) != current_user["sub"] and not MANAGEABLE_ROLES.get(current_user["role"]):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    actor_id = uuid.UUID(current_user["sub"])
+    await resolve_owned_user(user_repo, actor_id, current_user["role"], user_id)
     return await service.get_by_date(user_id, date)

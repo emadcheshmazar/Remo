@@ -94,6 +94,40 @@ async def test_update_user(client, admin_token):
     assert r.json()["full_name"] == "New Name"
 
 
+async def test_manager_promotes_member_to_supervisor(client, manager_token):
+    create = await client.post(
+        "/api/v1/users",
+        json={"username": f"mbr_{uuid.uuid4().hex[:6]}", "password": "pass", "full_name": "M", "role": "MEMBER"},
+        headers=_auth(manager_token),
+    )
+    uid = create.json()["id"]
+    r = await client.patch(f"/api/v1/users/{uid}", json={"role": "SUPERVISOR"}, headers=_auth(manager_token))
+    assert r.status_code == 200
+    assert r.json()["role"] == "SUPERVISOR"
+
+
+async def test_supervisor_cannot_promote_member_to_supervisor(client, supervisor_token):
+    create = await client.post(
+        "/api/v1/users",
+        json={"username": f"mbr_{uuid.uuid4().hex[:6]}", "password": "pass", "full_name": "M", "role": "MEMBER"},
+        headers=_auth(supervisor_token),
+    )
+    uid = create.json()["id"]
+    r = await client.patch(f"/api/v1/users/{uid}", json={"role": "SUPERVISOR"}, headers=_auth(supervisor_token))
+    assert r.status_code == 403
+
+
+async def test_manager_cannot_promote_member_to_admin(client, manager_token):
+    create = await client.post(
+        "/api/v1/users",
+        json={"username": f"mbr_{uuid.uuid4().hex[:6]}", "password": "pass", "full_name": "M", "role": "MEMBER"},
+        headers=_auth(manager_token),
+    )
+    uid = create.json()["id"]
+    r = await client.patch(f"/api/v1/users/{uid}", json={"role": "ADMIN"}, headers=_auth(manager_token))
+    assert r.status_code == 403
+
+
 async def test_delete_user(client, admin_token):
     create = await client.post(
         "/api/v1/users",

@@ -17,7 +17,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    // A 401 from the login request itself just means wrong credentials —
+    // there's no session to invalidate, and redirecting to /login while
+    // already there causes a full page reload that wipes the error message
+    // before the user ever sees it. Only treat 401s from *other* requests
+    // as "your session died, log out."
+    const isLoginRequest = error.config?.url?.includes('/auth/login')
+    if (error.response?.status === 401 && !isLoginRequest && typeof window !== 'undefined') {
       localStorage.removeItem('access_token')
       window.location.href = '/login'
     }

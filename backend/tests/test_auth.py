@@ -1,3 +1,5 @@
+import uuid
+
 from tests.conftest import _auth, _login
 
 
@@ -53,3 +55,24 @@ async def test_change_password_wrong_current(client, member, member_token):
         headers=_auth(member_token),
     )
     assert r.status_code == 400
+
+
+async def test_deactivated_user_token_immediately_rejected(client, manager_token):
+    username = f"deact_{uuid.uuid4().hex[:6]}"
+    create = await client.post(
+        "/api/v1/users",
+        json={"username": username, "password": "pass123", "full_name": "D", "role": "MEMBER"},
+        headers=_auth(manager_token),
+    )
+    user_id = create.json()["id"]
+    token = (await _login(client, username, "pass123"))
+
+    r = await client.get("/api/v1/auth/me", headers=_auth(token))
+    assert r.status_code == 200
+
+    # deactivate the account — the still-unexpired token must stop working
+    # immediately, not just after it naturally expires
+    await client.patch(f"/api/v1/users/{user_id}", json={"is_active": False}, headers=_auth(manager_token))
+
+    r2 = await client.get("/api/v1/auth/me", headers=_auth(token))
+    assert r2.status_code == 401

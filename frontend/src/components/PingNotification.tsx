@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSSEStore } from '@/store/sse.store'
 import { statusService } from '@/services/status.service'
+import { useToastStore } from '@/store/toast.store'
+import { getErrorMessage } from '@/utils/errors'
 import { useT } from '@/hooks/useT'
 import type { PingData } from '@/types'
 
@@ -134,7 +136,9 @@ export function PingNotification() {
     localStorage.removeItem(STORAGE_KEY)
     try {
       await statusService.respondPing(incomingPing.check_id, incomingPing.from_user_id, reply.trim())
-    } catch { /* silent */ }
+    } catch (e) {
+      useToastStore.getState().push(getErrorMessage(e))
+    }
     setIncomingPing(null)
   }, [incomingPing, reply, setIncomingPing])
 

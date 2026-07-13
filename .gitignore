@@ -17,9 +17,13 @@ node_modules/
 .next/
 out/
 npm-debug.log*
+*.tsbuildinfo
 
 # Docker
 *.log
+
+# DB backups
+infra/backups/
 
 # IDE
 .vscode/

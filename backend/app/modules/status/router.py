@@ -8,6 +8,7 @@ from app.core.database import get_session
 from app.core.events import broadcast, subscribe, unsubscribe
 from app.core.security import decode_token
 from app.shared.dependencies import get_current_user
+from app.shared.scope import resolve_owned_user
 from app.modules.status.schema import StatusRead, StatusUpdate, StatusLogRead, PingRequest, PingRespondRequest
 from app.modules.users.repository import UserRepository
 from app.modules.status.service import StatusService
@@ -126,10 +127,7 @@ async def send_ping(
     if actor_role not in ("MANAGER", "SUPERVISOR"):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
-    if actor_role == "SUPERVISOR":
-        target = await user_repo.get_by_id(user_id)
-        if not target or target.supervisor_id != actor_id:
-            raise HTTPException(status_code=403, detail="Can only ping your direct team members")
+    await resolve_owned_user(user_repo, actor_id, actor_role, user_id, allow_self=False)
 
     check_id = str(uuid.uuid4())
     await broadcast({
@@ -165,5 +163,8 @@ async def get_status_log(
     user_id: uuid.UUID,
     current_user: dict = Depends(get_current_user),
     service: StatusService = Depends(_service),
+    user_repo: UserRepository = Depends(_user_repo),
 ):
+    actor_id = uuid.UUID(current_user["sub"])
+    await resolve_owned_user(user_repo, actor_id, current_user["role"], user_id)
     return await service.get_log(user_id)

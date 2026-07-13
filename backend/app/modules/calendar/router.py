@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.shared.dependencies import get_current_user
+from app.shared.scope import resolve_owned_user
 from app.modules.calendar.schema import DayEntryRead, DayEntryUpsert, DayNotesUpdate, DayStatsRead, ApprovalRequest
 from app.modules.calendar.service import CalendarService
 from app.modules.calendar.repository import CalendarRepository
@@ -27,6 +28,10 @@ def _svc(session: AsyncSession = Depends(get_session)) -> CalendarService:
 
 def _user_svc(session: AsyncSession = Depends(get_session)) -> UserService:
     return UserService(UserRepository(session))
+
+
+def _user_repo(session: AsyncSession = Depends(get_session)) -> UserRepository:
+    return UserRepository(session)
 
 
 @router.get("/me/today", response_model=DayEntryRead | None)
@@ -68,7 +73,10 @@ async def get_day_stats(
     date: Date = Query(...),
     current_user: dict = Depends(get_current_user),
     svc: CalendarService = Depends(_svc),
+    user_repo: UserRepository = Depends(_user_repo),
 ):
+    actor_id = uuid.UUID(current_user["sub"])
+    await resolve_owned_user(user_repo, actor_id, current_user["role"], user_id)
     return await svc.get_day_stats(user_id, date)
 
 
@@ -79,7 +87,10 @@ async def get_user_calendar(
     end: Date = Query(...),
     current_user: dict = Depends(get_current_user),
     svc: CalendarService = Depends(_svc),
+    user_repo: UserRepository = Depends(_user_repo),
 ):
+    actor_id = uuid.UUID(current_user["sub"])
+    await resolve_owned_user(user_repo, actor_id, current_user["role"], user_id)
     return await svc.get_month(user_id, start, end)
 
 

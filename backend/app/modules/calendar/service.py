@@ -6,6 +6,7 @@ from app.modules.calendar.model import DayEntry
 from app.modules.work.repository import WorkRepository
 from app.modules.timeline.repository import TimelineRepository
 from app.modules.users.repository import UserRepository
+from app.shared.scope import resolve_owned_user
 
 
 class CalendarService:
@@ -37,14 +38,13 @@ class CalendarService:
         if actor_role == "MEMBER":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Members cannot set day types")
 
-    async def _check_supervisor_scope(self, actor_id: uuid.UUID, user_id: uuid.UUID) -> None:
-        if actor_id == user_id:
-            return
+    async def _check_owned(self, actor_id: uuid.UUID, actor_role: str, user_id: uuid.UUID) -> None:
+        """A MANAGER/SUPERVISOR may only edit day entries for people in their
+        own org — ADMINs have no calendar org of their own and can't edit
+        anyone's entries directly."""
         if self.user_repo is None:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
-        target = await self.user_repo.get_by_id(user_id)
-        if target is None or target.supervisor_id != actor_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only modify day types for your direct members")
+        await resolve_owned_user(self.user_repo, actor_id, actor_role, user_id, allow_admin=False)
 
     async def set_day(
         self,
@@ -55,8 +55,7 @@ class CalendarService:
         day_type: str,
     ) -> DayEntry:
         self._check_can_edit(actor_id, actor_role)
-        if actor_role == "SUPERVISOR":
-            await self._check_supervisor_scope(actor_id, user_id)
+        await self._check_owned(actor_id, actor_role, user_id)
         return await self.repo.upsert(user_id, day, day_type, actor_id)
 
     async def clear_day(
@@ -67,8 +66,7 @@ class CalendarService:
         day: Date,
     ) -> None:
         self._check_can_edit(actor_id, actor_role)
-        if actor_role == "SUPERVISOR":
-            await self._check_supervisor_scope(actor_id, user_id)
+        await self._check_owned(actor_id, actor_role, user_id)
         await self.repo.delete(user_id, day)
 
     async def approve_day(
@@ -80,9 +78,9 @@ class CalendarService:
         approval_status: str,
         approved_minutes: int | None,
     ) -> DayEntry:
-        if actor_role in ("MEMBER", "MANAGER"):
+        if actor_role != "SUPERVISOR":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only supervisors can approve work")
-        await self._check_supervisor_scope(actor_id, user_id)
+        await self._check_owned(actor_id, actor_role, user_id)
 
         entry = await self.repo.upsert_approval(user_id, day, actor_id, approval_status, approved_minutes)
         if entry is None:
@@ -96,9 +94,9 @@ class CalendarService:
         user_id: uuid.UUID,
         day: Date,
     ) -> DayEntry:
-        if actor_role in ("MEMBER", "MANAGER"):
+        if actor_role != "SUPERVISOR":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only supervisors can clear approvals")
-        await self._check_supervisor_scope(actor_id, user_id)
+        await self._check_owned(actor_id, actor_role, user_id)
         entry = await self.repo.clear_approval(user_id, day)
         if entry is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Day entry not found")
@@ -112,9 +110,11 @@ class CalendarService:
         day: Date,
         notes: str | None,
     ) -> DayEntry:
-        self._check_can_edit(actor_id, actor_role)
-        if actor_role == "SUPERVISOR":
-            await self._check_supervisor_scope(actor_id, user_id)
+        # Notes are supervisor-only — even a MANAGER (who can set REMOTE/LEAVE
+        # for anyone) shouldn't see or write this note.
+        if actor_role != "SUPERVISOR":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only supervisors can set day notes")
+        await self._check_owned(actor_id, actor_role, user_id)
         entry = await self.repo.set_notes(user_id, day, notes)
         if entry is None:
             raise HTTPException(

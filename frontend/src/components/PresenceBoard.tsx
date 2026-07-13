@@ -8,6 +8,8 @@ import { workService } from '@/services/work.service'
 import { UserPanel } from '@/components/UserPanel'
 import { useAuthStore } from '@/store/auth.store'
 import { useSSEStore } from '@/store/sse.store'
+import { useToastStore } from '@/store/toast.store'
+import { getErrorMessage } from '@/utils/errors'
 import { useT } from '@/hooks/useT'
 import type { PingResultData, Role, StatusState, User } from '@/types'
 
@@ -67,7 +69,8 @@ function PingModal({ target, onClose }: PingModalProps) {
     try {
       await statusService.sendPing(target.id, message.trim())
       setSent(true)
-    } catch {
+    } catch (e) {
+      useToastStore.getState().push(getErrorMessage(e))
       setSending(false)
     }
   }

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date as Date, datetime, timezone
 from app.modules.reports.model import DailyReport
 from app.modules.reports.schema import ReportUpsert
 from app.modules.reports.repository import ReportRepository
@@ -37,6 +37,5 @@ class ReportService:
     async def list_by_user(self, user_id: uuid.UUID) -> list[DailyReport]:
         return await self.repo.list_by_user(user_id)
 
-    async def get_by_date(self, user_id: uuid.UUID, day: str) -> DailyReport | None:
-        from datetime import date
-        return await self.repo.get_by_date(user_id, date.fromisoformat(day))
+    async def get_by_date(self, user_id: uuid.UUID, day: Date) -> DailyReport | None:
+        return await self.repo.get_by_date(user_id, day)

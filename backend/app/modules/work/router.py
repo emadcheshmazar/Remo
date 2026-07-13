@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_session
 from app.core.events import broadcast
 from app.shared.dependencies import get_current_user
-from app.shared.roles import MANAGEABLE_ROLES, UserRole
+from app.shared.roles import UserRole
 from app.modules.work.schema import WorkSessionRead, WorkSummary
 from app.modules.work.service import WorkService
 from app.modules.work.repository import WorkRepository
@@ -193,9 +193,7 @@ async def get_user_history(
     user_id: uuid.UUID,
     current_user: dict = Depends(get_current_user),
     service: WorkService = Depends(_service),
+    user_repo: UserRepository = Depends(_users),
 ):
-    if str(user_id) == current_user["sub"]:
-        return await service.get_history(user_id)
-    if not MANAGEABLE_ROLES.get(current_user["role"]):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    await _resolve_target(user_id, current_user, user_repo)
     return await service.get_history(user_id)

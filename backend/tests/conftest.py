@@ -9,6 +9,7 @@ Strategy:
 import os
 import subprocess
 import uuid as _uuid
+from urllib.parse import urlsplit, urlunsplit
 
 import pytest
 import pytest_asyncio
@@ -16,10 +17,28 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlmodel import text
 
-TEST_DB_URL = os.getenv(
+RAW_DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+asyncpg://rwms:rwms@localhost:5434/rwms",
 )
+
+
+def _force_test_db_name(url: str) -> str:
+    """Always run tests against a "<dbname>_test" database, never whatever
+    DATABASE_URL points to — this fixture DROPs and recreates the whole
+    schema, so accidentally pointing it at the real app database (e.g. when
+    running `docker compose exec backend pytest`, where DATABASE_URL is the
+    live dev DB) would destroy real data."""
+    parts = urlsplit(url)
+    db_name = parts.path.lstrip("/") or "rwms"
+    if not db_name.endswith("_test"):
+        db_name += "_test"
+    return urlunsplit(parts._replace(path=f"/{db_name}"))
+
+
+TEST_DB_URL = _force_test_db_name(RAW_DATABASE_URL)
+_TEST_DB_NAME = urlsplit(TEST_DB_URL).path.lstrip("/")
+_MAINTENANCE_DB_URL = urlunsplit(urlsplit(TEST_DB_URL)._replace(path="/postgres"))
 
 # pre-import models so SQLModel metadata is populated (needed for truncate order)
 from app.modules.users.model import User  # noqa: E402,F401
@@ -41,6 +60,25 @@ TRUNCATE_SQL = text(
 @pytest.fixture(scope="session", autouse=True)
 def db_schema():
     env = {**os.environ, "DATABASE_URL": TEST_DB_URL}
+
+    # make sure the dedicated test database exists (it's a separate database,
+    # not just a schema, so it won't exist yet on a fresh postgres instance)
+    ensure_db = subprocess.run(
+        ["python", "-c",
+         "import asyncio, asyncpg\n"
+         "async def run():\n"
+         f"    conn = await asyncpg.connect('{_MAINTENANCE_DB_URL.replace('postgresql+asyncpg', 'postgresql')}')\n"
+         f"    exists = await conn.fetchval(\"SELECT 1 FROM pg_database WHERE datname = '{_TEST_DB_NAME}'\")\n"
+         "    if not exists:\n"
+         f"        await conn.execute('CREATE DATABASE \"{_TEST_DB_NAME}\"')\n"
+         "    await conn.close()\n"
+         "asyncio.run(run())"
+        ],
+        capture_output=True, text=True, env=env,
+    )
+    if ensure_db.returncode != 0:
+        pytest.fail(f"Could not ensure test database {_TEST_DB_NAME!r} exists:\n{ensure_db.stderr}")
+
     # wipe and recreate schema for clean slate
     drop_result = subprocess.run(
         ["python", "-c",

@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { calendarService } from '@/services/calendar.service'
 import { useT } from '@/hooks/useT'
+import { useToastStore } from '@/store/toast.store'
+import { getErrorMessage } from '@/utils/errors'
 
 interface Props {
   userId: string
@@ -37,6 +39,8 @@ export function DayNotesEditor({ userId, isoDate, initialNotes, onSaved }: Props
       setJustSaved(true)
       onSaved?.()
       setTimeout(() => setJustSaved(false), 2500)
+    } catch (e) {
+      useToastStore.getState().push(getErrorMessage(e))
     } finally {
       setSaving(false)
     }

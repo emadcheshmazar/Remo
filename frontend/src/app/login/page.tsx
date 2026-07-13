@@ -6,6 +6,8 @@ import { useAuthStore } from '@/store/auth.store'
 import { useT } from '@/hooks/useT'
 import { useThemeStore } from '@/store/theme.store'
 import { useLocaleStore } from '@/store/locale.store'
+import { getErrorMessage } from '@/utils/errors'
+import { PasswordInput } from '@/components/PasswordInput'
 import api from '@/services/api'
 import type { TokenResponse } from '@/types'
 
@@ -29,8 +31,8 @@ export default function LoginPage() {
       setAuth(data.user, data.access_token)
       const role = data.user.role
       router.push(role === 'ADMIN' ? '/admin' : role === 'MANAGER' ? '/calendar' : '/dashboard')
-    } catch {
-      setError(t('error'))
+    } catch (e) {
+      setError(getErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -72,8 +74,7 @@ export default function LoginPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('password')}</label>
-            <input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border border-gray-200 dark:border-slate-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"

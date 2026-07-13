@@ -2,14 +2,18 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth.store'
 import { AppLayout } from '@/components/AppLayout'
 import { calendarService } from '@/services/calendar.service'
 import { jalaliMonthIsoRange, isoToJalali, JALALI_MONTHS, todayJalali } from '@/utils/jalali'
+import { ROLE_TEXT_COLOR } from '@/utils/roleColors'
 import { useT } from '@/hooks/useT'
 import { useLocaleStore } from '@/store/locale.store'
-import type { ApprovalStatus, DayEntry, DayType } from '@/types'
+import type { ApprovalStatus, DayEntry, DayType, User } from '@/types'
+
+// Half-hour options in minutes: 30, 60, 90, ..., 600 (0.5h to 10h)
+const HALF_HOUR_OPTIONS = Array.from({ length: 20 }, (_, i) => (i + 1) * 30)
 
 const TYPE_BADGE: Record<DayType, { cls: string; label: { fa: string; en: string } }> = {
   REMOTE: { cls: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700', label: { fa: 'ریموت', en: 'Remote' } },
@@ -38,17 +42,32 @@ function StatCard({ value, label, color }: { value: number; label: string; color
 export default function PerformancePage() {
   const { user: me, hydrated } = useAuthStore()
   const router = useRouter()
+  const qc = useQueryClient()
   const t = useT()
   const { locale } = useLocaleStore()
 
   const [jYear, setJYear] = useState(todayJalali()[0])
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [customFor, setCustomFor] = useState<string | null>(null)
+  const [customMin, setCustomMin] = useState('')
 
   const { data: users } = useQuery({
     queryKey: ['calendar-users'],
     queryFn: () => calendarService.getCalendarUsers().then(r => r.data),
     enabled: !!me,
   })
+
+  // getCalendarUsers() returns the whole org (for remote/leave visibility),
+  // but opening someone's day-by-day detail here is narrower: MANAGER can
+  // open anyone's, SUPERVISOR only their own + their direct reports'.
+  function canViewDetail(u: User): boolean {
+    if (!me) return false
+    if (me.role === 'MANAGER') return true
+    if (me.role === 'SUPERVISOR') return u.id === me.id || u.supervisor_id === me.id
+    return false
+  }
+
+  const selectableUsers = useMemo(() => (users ?? []).filter(canViewDetail), [users, me])
 
   const yearStart = jalaliMonthIsoRange(jYear, 1)[0]
   const yearEnd   = jalaliMonthIsoRange(jYear, 12)[1]
@@ -59,7 +78,26 @@ export default function PerformancePage() {
     enabled: !!selectedUserId,
   })
 
-  const selectedUser = users?.find(u => u.id === selectedUserId)
+  const selectedUser = selectableUsers.find(u => u.id === selectedUserId)
+  // Only a SUPERVISOR can approve/reject, and only for their own direct reports
+  const canApproveSelected = me?.role === 'SUPERVISOR' && selectedUser?.supervisor_id === me.id
+
+  const approveMutation = useMutation({
+    mutationFn: ({ date, status, minutes }: { date: string; status: ApprovalStatus; minutes: number | null }) =>
+      calendarService.approveDay(selectedUserId, date, status, minutes),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['performance', selectedUserId, jYear] }),
+  })
+
+  const clearApprovalMutation = useMutation({
+    mutationFn: (date: string) => calendarService.clearApproval(selectedUserId, date),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['performance', selectedUserId, jYear] }),
+  })
+
+  function handleApprove(date: string, status: ApprovalStatus, minutes: number | null) {
+    approveMutation.mutate({ date, status, minutes })
+    setCustomFor(null)
+    setCustomMin('')
+  }
 
   // Only REMOTE and LEAVE entries
   const filteredEntries = useMemo(
@@ -88,10 +126,14 @@ export default function PerformancePage() {
     return locale === 'fa' ? `${jd} ${monthName} ${jy}` : `${monthName} ${jd}, ${jy}`
   }
 
+  function formatHours(min: number) {
+    const h = min / 60
+    return locale === 'fa' ? `${h} ساعت` : `${h}h`
+  }
+
   function fmtApproved(e: DayEntry) {
     if (!e.approved_minutes) return ''
-    const h = e.approved_minutes / 60
-    return locale === 'fa' ? ` (${h} ساعت)` : ` (${h}h)`
+    return ` (${formatHours(e.approved_minutes)})`
   }
 
   if (!hydrated || !me) return null
@@ -121,8 +163,8 @@ export default function PerformancePage() {
               className="text-sm border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             >
               <option value="">{t('select_user')}</option>
-              {(users ?? []).map(u => (
-                <option key={u.id} value={u.id}>{u.full_name}</option>
+              {selectableUsers.map(u => (
+                <option key={u.id} value={u.id} className={ROLE_TEXT_COLOR[u.role]}>{u.full_name}</option>
               ))}
             </select>
           </div>
@@ -152,8 +194,10 @@ export default function PerformancePage() {
           <>
             {/* User header */}
             <div className="mb-4">
-              <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">
-                {selectedUser?.full_name}
+              <h2 className="text-base font-semibold">
+                <span className={selectedUser ? ROLE_TEXT_COLOR[selectedUser.role] : 'text-gray-800 dark:text-slate-100'}>
+                  {selectedUser?.full_name}
+                </span>
                 <span className="text-xs font-normal text-gray-400 dark:text-slate-500 mr-2">
                   — {locale === 'fa' ? JALALI_MONTHS[0] : JALALI_MONTHS_EN[0]} {jYear} تا {locale === 'fa' ? JALALI_MONTHS[11] : JALALI_MONTHS_EN[11]} {jYear}
                 </span>
@@ -203,15 +247,16 @@ export default function PerformancePage() {
                             .map(e => {
                               const cfg = TYPE_BADGE[e.day_type as DayType]
                               const appr = e.approval_status as ApprovalStatus | null
+                              const isCustomOpen = customFor === e.date
                               return (
-                                <li key={e.date} className="flex items-center gap-3 px-4 py-2.5">
+                                <li key={e.date} className="flex items-center gap-3 px-4 py-2.5 flex-wrap">
                                   <span className="text-sm text-gray-700 dark:text-slate-300 font-medium min-w-[120px]">
                                     {fmtDate(e.date)}
                                   </span>
                                   <span className={`text-[11px] px-2 py-0.5 rounded border font-medium ${cfg.cls}`}>
                                     {locale === 'fa' ? cfg.label.fa : cfg.label.en}
                                   </span>
-                                  {e.day_type === 'REMOTE' && (
+                                  {e.day_type === 'REMOTE' && !canApproveSelected && (
                                     appr ? (
                                       <span className={`text-[11px] font-semibold ${APPROVAL_BADGE[appr].cls}`}>
                                         {APPROVAL_BADGE[appr].icon}
@@ -220,6 +265,77 @@ export default function PerformancePage() {
                                       </span>
                                     ) : (
                                       <span className="text-[11px] text-gray-400 dark:text-slate-500">{t('pending_approval')}</span>
+                                    )
+                                  )}
+
+                                  {/* Approve/reject controls — SUPERVISOR, own direct reports only */}
+                                  {e.day_type === 'REMOTE' && canApproveSelected && (
+                                    appr ? (
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[11px] font-semibold ${APPROVAL_BADGE[appr].cls}`}>
+                                          {APPROVAL_BADGE[appr].icon}
+                                          {appr === 'APPROVED' ? t('approved') : t('rejected_work')}
+                                          {appr === 'APPROVED' ? fmtApproved(e) : ''}
+                                        </span>
+                                        <button
+                                          disabled={clearApprovalMutation.isPending}
+                                          onClick={() => clearApprovalMutation.mutate(e.date)}
+                                          title={t('clear_approval')}
+                                          className="text-[10px] px-1.5 py-0.5 rounded text-gray-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ) : isCustomOpen ? (
+                                      <div className="flex items-center gap-1.5">
+                                        <select
+                                          value={customMin}
+                                          onChange={ev => setCustomMin(ev.target.value)}
+                                          className="text-xs border border-gray-200 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                                        >
+                                          <option value="">{t('select_hours')}</option>
+                                          {HALF_HOUR_OPTIONS.map(min => (
+                                            <option key={min} value={min}>{formatHours(min)}</option>
+                                          ))}
+                                        </select>
+                                        <button
+                                          disabled={!customMin || approveMutation.isPending}
+                                          onClick={() => handleApprove(e.date, 'APPROVED', parseInt(customMin))}
+                                          className="text-xs px-2 py-1 bg-green-600 dark:bg-green-700 text-white rounded disabled:opacity-50"
+                                        >
+                                          ✓
+                                        </button>
+                                        <button
+                                          onClick={() => { setCustomFor(null); setCustomMin('') }}
+                                          className="text-xs px-1.5 py-1 text-gray-400 dark:text-slate-500 hover:text-gray-600"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1.5">
+                                        <button
+                                          disabled={approveMutation.isPending}
+                                          onClick={() => handleApprove(e.date, 'APPROVED', null)}
+                                          className="text-[11px] px-2 py-1 rounded font-medium bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 disabled:opacity-50"
+                                        >
+                                          ✓ {t('approve_all')}
+                                        </button>
+                                        <button
+                                          disabled={approveMutation.isPending}
+                                          onClick={() => setCustomFor(e.date)}
+                                          className="text-[11px] px-2 py-1 rounded font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 disabled:opacity-50"
+                                        >
+                                          ✎ {t('approve_custom')}
+                                        </button>
+                                        <button
+                                          disabled={approveMutation.isPending}
+                                          onClick={() => handleApprove(e.date, 'REJECTED', null)}
+                                          className="text-[11px] px-2 py-1 rounded font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-50"
+                                        >
+                                          ✗ {t('reject_work')}
+                                        </button>
+                                      </div>
                                     )
                                   )}
                                 </li>

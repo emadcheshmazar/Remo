@@ -134,6 +134,7 @@ export const translations = {
     // General
     loading: 'در حال بارگذاری...',
     error: 'خطا',
+    network_error: 'اتصال به سرور برقرار نشد. اتصال اینترنت خود را بررسی کنید.',
     minutes: 'دقیقه',
     hours: 'ساعت',
   },
@@ -270,6 +271,7 @@ export const translations = {
     // General
     loading: 'Loading...',
     error: 'Error',
+    network_error: 'Could not reach the server. Check your internet connection.',
     minutes: 'min',
     hours: 'h',
   },

@@ -10,6 +10,7 @@ import { DayDetail } from '@/components/DayDetail'
 import { DayNotesEditor } from '@/components/DayNotesEditor'
 import { calendarService } from '@/services/calendar.service'
 import { todayJalali, jalaliToIso, formatJalali, isoToJalali, jalaliMonthIsoRange } from '@/utils/jalali'
+import { ROLE_TEXT_COLOR } from '@/utils/roleColors'
 import { useT } from '@/hooks/useT'
 import type { ApprovalStatus, DayEntry, DayType, User } from '@/types'
 
@@ -55,6 +56,13 @@ function CalendarContent() {
     if (me.role === 'MANAGER') return true
     if (me.role === 'SUPERVISOR') return u.id === me.id || u.supervisor_id === me.id
     return u.id === me.id
+  }
+
+  // Who can see/write the day note? Only SUPERVISOR, for themselves + their
+  // direct reports — not MANAGER, even though MANAGER can set REMOTE/LEAVE.
+  function canViewNotesFor(u: User): boolean {
+    if (!me) return false
+    return me.role === 'SUPERVISOR' && (u.id === me.id || u.supervisor_id === me.id)
   }
 
   // Who can approve/reject/clear? Only SUPERVISOR for their direct team
@@ -179,7 +187,9 @@ function CalendarContent() {
               className="text-xs border border-gray-200 dark:border-slate-600 rounded-md px-2 py-1 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-200"
             >
               <option value="">{t('all')}</option>
-              {(users ?? []).map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
+              {(users ?? []).map(u => (
+                <option key={u.id} value={u.id} className={ROLE_TEXT_COLOR[u.role]}>{u.full_name}</option>
+              ))}
             </select>
           </div>
 
@@ -237,7 +247,7 @@ function CalendarContent() {
                         }`}
                       >
                         <span className={`w-2 h-2 rounded-full shrink-0 ${dt ? TYPE_DOT[dt] : 'bg-gray-200 dark:bg-slate-600'}`} />
-                        <span className="flex-1 text-sm text-gray-700 dark:text-slate-300 font-medium truncate">{u.full_name}</span>
+                        <span className={`flex-1 text-sm font-medium truncate ${ROLE_TEXT_COLOR[u.role]}`}>{u.full_name}</span>
                         {dt && (
                           <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${TYPE_BADGE[dt]}`}>
                             {t(dt === 'REMOTE' ? 'remote' : 'leave')}
@@ -296,8 +306,8 @@ function CalendarContent() {
                             )}
                           </div>
 
-                          {/* Notes textarea — only for REMOTE entries */}
-                          {dt === 'REMOTE' && (
+                          {/* Notes textarea — only for REMOTE entries, supervisor-only */}
+                          {dt === 'REMOTE' && canViewNotesFor(u) && (
                             <DayNotesEditor
                               userId={u.id}
                               isoDate={selectedIso}
