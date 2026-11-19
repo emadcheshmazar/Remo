@@ -6,6 +6,8 @@ from app.modules.status.router import router as status_router
 from app.modules.reports.router import router as reports_router
 from app.modules.timeline.router import router as timeline_router
 from app.modules.calendar.router import router as calendar_router
+from app.modules.tasks.router import router as tasks_router
+from app.modules.jira.router import router as jira_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -15,3 +17,5 @@ router.include_router(status_router)
 router.include_router(reports_router)
 router.include_router(timeline_router)
 router.include_router(calendar_router)
+router.include_router(tasks_router)
+router.include_router(jira_router)

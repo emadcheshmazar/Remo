@@ -39,54 +39,48 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 transition-colors">
-      {/* Theme / Locale toggles */}
-      <div className="fixed top-4 right-4 flex gap-2">
-        <button
-          onClick={toggleTheme}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
-        >
-          {theme === 'dark' ? '☀️' : '🌙'}
+    <div className="remo-shell relative flex min-h-screen items-center justify-center px-4">
+      <div className="fixed end-4 top-4 flex gap-2">
+        <button onClick={toggleTheme} className="remo-btn-ghost h-8 w-8 !p-0 text-sm" aria-label="theme">
+          {theme === 'dark' ? '☀' : '☾'}
         </button>
-        <button
-          onClick={toggleLocale}
-          className="px-2 h-8 rounded-lg text-xs font-semibold text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-        >
+        <button onClick={toggleLocale} className="remo-btn-secondary !px-2.5 !py-1 text-xs font-semibold">
           {locale === 'fa' ? 'EN' : 'FA'}
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-1 text-center text-gray-900 dark:text-slate-100 tracking-tight">remo</h1>
-        <p className="text-sm text-gray-400 dark:text-slate-500 text-center mb-6">کارتیمی از هر جایی</p>
+      <div className="remo-panel w-full max-w-sm p-7 sm:p-8">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-accent-700 text-white shadow-sm dark:bg-accent-500 dark:text-ink-950">
+            <span className="font-display text-lg font-semibold">r</span>
+          </div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-950 dark:text-ink-50">remo</h1>
+          <p className="mt-1 text-sm text-ink-400 dark:text-ink-500">کارتیمی از هر جایی</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('username')}</label>
+          <label className="block">
+            <span className="remo-label">{t('username')}</span>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full border border-gray-200 dark:border-slate-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+              className="remo-input mt-1"
               required
               autoFocus
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('password')}</label>
+          </label>
+          <label className="block">
+            <span className="remo-label">{t('password')}</span>
             <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-200 dark:border-slate-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-slate-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
+              className="remo-input mt-1"
               required
             />
-          </div>
-          {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gray-900 dark:bg-indigo-700 text-white py-2 rounded-md text-sm font-medium hover:bg-gray-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors"
-          >
+          </label>
+          {error && <p className="text-sm text-heat-600">{error}</p>}
+          <button type="submit" disabled={loading} className="remo-btn-primary w-full">
             {loading ? t('signing_in') : t('sign_in')}
           </button>
         </form>

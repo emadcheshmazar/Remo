@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth.store'
 import { AppLayout } from '@/components/AppLayout'
 import { calendarService } from '@/services/calendar.service'
-import { jalaliMonthIsoRange, isoToJalali, JALALI_MONTHS, todayJalali } from '@/utils/jalali'
+import { etsPeriodIsoRange, etsPeriodOf, isoToJalali, JALALI_MONTHS, todayJalali } from '@/utils/jalali'
 import { ROLE_TEXT_COLOR } from '@/utils/roleColors'
 import { useT } from '@/hooks/useT'
 import { useLocaleStore } from '@/store/locale.store'
@@ -69,8 +69,9 @@ export default function PerformancePage() {
 
   const selectableUsers = useMemo(() => (users ?? []).filter(canViewDetail), [users, me])
 
-  const yearStart = jalaliMonthIsoRange(jYear, 1)[0]
-  const yearEnd   = jalaliMonthIsoRange(jYear, 12)[1]
+  // ETS year: period Farvardin (24 Esfand prev → 23 Farvardin) through Esfand
+  const yearStart = etsPeriodIsoRange(jYear, 1)[0]
+  const yearEnd   = etsPeriodIsoRange(jYear, 12)[1]
 
   const { data: entries, isLoading } = useQuery({
     queryKey: ['performance', selectedUserId, jYear],
@@ -109,16 +110,18 @@ export default function PerformancePage() {
   const leaveCount   = filteredEntries.filter(e => e.day_type === 'LEAVE').length
   const approvedCount = filteredEntries.filter(e => e.approval_status === 'APPROVED').length
 
-  // Group entries by Jalali month (1-12)
+  // Group entries by ETS period (named after the period end-month, 1-12)
   const byMonth = useMemo(() => {
     const map = new Map<number, DayEntry[]>()
     for (const e of filteredEntries) {
-      const [, jm] = isoToJalali(e.date)
-      if (!map.has(jm)) map.set(jm, [])
-      map.get(jm)!.push(e)
+      const [jy, jm, jd] = isoToJalali(e.date)
+      const [periodY, periodM] = etsPeriodOf(jy, jm, jd)
+      if (periodY !== jYear) continue
+      if (!map.has(periodM)) map.set(periodM, [])
+      map.get(periodM)!.push(e)
     }
     return map
-  }, [filteredEntries])
+  }, [filteredEntries, jYear])
 
   function fmtDate(iso: string) {
     const [jy, jm, jd] = isoToJalali(iso)
@@ -199,7 +202,7 @@ export default function PerformancePage() {
                   {selectedUser?.full_name}
                 </span>
                 <span className="text-xs font-normal text-gray-400 dark:text-slate-500 mr-2">
-                  — {locale === 'fa' ? JALALI_MONTHS[0] : JALALI_MONTHS_EN[0]} {jYear} تا {locale === 'fa' ? JALALI_MONTHS[11] : JALALI_MONTHS_EN[11]} {jYear}
+                  — {locale === 'fa' ? `دوره‌های ETS ${jYear} (۲۴ تا ۲۳)` : `ETS periods ${jYear} (24→23)`}
                 </span>
               </h2>
             </div>
@@ -229,7 +232,9 @@ export default function PerformancePage() {
                       <div key={m} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
                         {/* Month header */}
                         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50">
-                          <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200">{monthName} {jYear}</h3>
+                          <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200">
+                            {locale === 'fa' ? 'دوره' : 'Period'} {monthName} {jYear}
+                          </h3>
                           <div className="flex gap-2 text-xs">
                             {remoteInMonth > 0 && (
                               <span className="text-blue-600 dark:text-blue-400 font-medium">{remoteInMonth} ریموت</span>

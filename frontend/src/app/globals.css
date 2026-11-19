@@ -5,8 +5,116 @@
 @layer base {
   :root {
     color-scheme: light;
+    --surface: #f5f7f9;
+    --surface-elevated: #ffffff;
+    --border: #d9e2ea;
+    --text: #1a2229;
+    --muted: #7593aa;
+    --accent: #0f766e;
   }
+
   .dark {
     color-scheme: dark;
+    --surface: #12181e;
+    --surface-elevated: #1a2229;
+    --border: #314351;
+    --text: #e4ebf0;
+    --muted: #a3b7c7;
+    --accent: #2dd4bf;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-ink-50 text-ink-950 font-sans antialiased;
+    background-image: theme('backgroundImage.app-glow');
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  .dark body,
+  html.dark body {
+    @apply bg-ink-950 text-ink-100;
+    background-image: theme('backgroundImage.app-glow-dark');
+  }
+
+  ::selection {
+    background: rgba(13, 148, 136, 0.28);
+  }
+}
+
+@layer components {
+  .remo-shell {
+    @apply min-h-screen;
+  }
+
+  .remo-panel {
+    @apply rounded-2xl border border-ink-200/80 bg-white/80 shadow-soft backdrop-blur-sm
+      dark:border-ink-700/80 dark:bg-ink-900/70;
+  }
+
+  .remo-input {
+    @apply w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900
+      outline-none transition placeholder:text-ink-400
+      focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20
+      dark:border-ink-700 dark:bg-ink-950 dark:text-ink-100 dark:placeholder:text-ink-500;
+  }
+
+  .remo-btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium
+      transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45;
+  }
+
+  .remo-btn-primary {
+    @apply remo-btn bg-accent-700 text-white shadow-sm hover:bg-accent-600 dark:bg-accent-500 dark:text-ink-950 dark:hover:bg-accent-400;
+  }
+
+  .remo-btn-ghost {
+    @apply remo-btn text-ink-600 hover:bg-ink-100/80 dark:text-ink-300 dark:hover:bg-ink-800;
+  }
+
+  .remo-btn-secondary {
+    @apply remo-btn border border-ink-200 bg-white text-ink-800 hover:bg-ink-50
+      dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100 dark:hover:bg-ink-800;
+  }
+
+  .remo-chip {
+    @apply inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-medium tracking-wide;
+  }
+
+  .remo-seg {
+    @apply inline-flex rounded-xl border border-ink-200/90 bg-ink-100/60 p-0.5 dark:border-ink-700 dark:bg-ink-900/80;
+  }
+
+  .remo-seg-item {
+    @apply rounded-lg px-2.5 py-1.5 text-xs font-medium text-ink-500 transition
+      hover:text-ink-800 dark:text-ink-400 dark:hover:text-ink-100;
+  }
+
+  .remo-seg-item-active {
+    @apply bg-white text-ink-900 shadow-sm dark:bg-ink-700 dark:text-white;
+  }
+
+  .remo-label {
+    @apply text-xs font-medium text-ink-500 dark:text-ink-400;
+  }
+
+  .remo-hint {
+    @apply text-[11px] text-ink-400 dark:text-ink-500;
+  }
+
+  .remo-toggle {
+    @apply inline-flex items-center rounded-lg border border-ink-200 px-2.5 py-1 text-xs font-medium text-ink-600 transition
+      dark:border-ink-700 dark:text-ink-300;
+  }
+
+  .remo-toggle-on {
+    @apply border-accent-600 bg-accent-700 text-white dark:border-accent-400 dark:bg-accent-500 dark:text-ink-950;
+  }
+
+  .remo-toggle-warn {
+    @apply border-amber-500 bg-amber-500 text-white;
   }
 }

@@ -6,10 +6,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/auth.store'
 import { AppLayout } from '@/components/AppLayout'
 import { JalaliCalendar, DayMeta } from '@/components/JalaliCalendar'
+import { DueTodayWidget } from '@/components/tasks/DueTodayWidget'
 import { DayDetail } from '@/components/DayDetail'
 import { DayNotesEditor } from '@/components/DayNotesEditor'
 import { calendarService } from '@/services/calendar.service'
-import { todayJalali, jalaliToIso, formatJalali, isoToJalali, jalaliMonthIsoRange } from '@/utils/jalali'
+import { jalaliToIso, formatJalali, isoToJalali, etsPeriodIsoRange, todayEtsPeriod, todayJalali } from '@/utils/jalali'
 import { ROLE_TEXT_COLOR } from '@/utils/roleColors'
 import { useT } from '@/hooks/useT'
 import type { ApprovalStatus, DayEntry, DayType, User } from '@/types'
@@ -31,9 +32,9 @@ function CalendarContent() {
   const qc = useQueryClient()
   const t = useT()
 
-  const [todayJy, todayJm] = todayJalali()
-  const [jy, setJy] = useState(todayJy)
-  const [jm, setJm] = useState(todayJm)
+  const [periodJy, periodJm] = todayEtsPeriod()
+  const [jy, setJy] = useState(periodJy)
+  const [jm, setJm] = useState(periodJm)
   const todayIso = jalaliToIso(...todayJalali())
   const [selectedIso, setSelectedIso] = useState<string>(todayIso)
 
@@ -71,12 +72,12 @@ function CalendarContent() {
     return me.role === 'SUPERVISOR' && u.supervisor_id === me.id
   }
 
-  // Compute the full Jalali month ISO range (fixes cross-Gregorian-month boundary)
-  const [monthStart, monthEnd] = useMemo(() => jalaliMonthIsoRange(jy, jm), [jy, jm])
+  // ETS period: 24 of previous Jalali month → 23 of this month
+  const [periodStart, periodEnd] = useMemo(() => etsPeriodIsoRange(jy, jm), [jy, jm])
 
   const { data: teamEntries } = useQuery({
     queryKey: ['calendar-team', jy, jm],
-    queryFn: () => calendarService.getTeamMonth(monthStart, monthEnd).then(r => r.data),
+    queryFn: () => calendarService.getTeamMonth(periodStart, periodEnd).then(r => r.data),
     enabled: !!me && me.role !== 'ADMIN',
   })
 
@@ -154,11 +155,15 @@ function CalendarContent() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-bold text-gray-800 dark:text-slate-100">{t('team_calendar')}</h1>
         <button
-          onClick={() => { setJy(todayJy); setJm(todayJm); setSelectedIso(todayIso) }}
+          onClick={() => { setJy(periodJy); setJm(periodJm); setSelectedIso(todayIso) }}
           className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 font-medium"
         >
           {t('go_to_today')}
         </button>
+      </div>
+
+      <div className="mb-4">
+        <DueTodayWidget />
       </div>
 
       {canFilter && (

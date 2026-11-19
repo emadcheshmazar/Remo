@@ -8,8 +8,16 @@ dist/
 build/
 *.egg
 
-# Env
+# Env - keep real secrets local only
 .env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 *.env.local
 
 # Node

@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from app.api.v1.router import router as api_router
 from app.core.seed import seed_admin
 from app.core.config import settings
-from app.core.scheduler import close_stale_sessions, midnight_scheduler
+from app.core.scheduler import close_stale_sessions, jira_poll_scheduler, midnight_scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +20,13 @@ async def lifespan(app: FastAPI):
     await close_stale_sessions()
     # Start the nightly midnight auto-close task
     task = asyncio.create_task(midnight_scheduler())
+    jira_task = asyncio.create_task(jira_poll_scheduler())
     yield
     task.cancel()
+    jira_task.cancel()
     with suppress(asyncio.CancelledError):
         await task
+        await jira_task
 
 
 app = FastAPI(title="RWMS API", version="1.1.1", lifespan=lifespan)

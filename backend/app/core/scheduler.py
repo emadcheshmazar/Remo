@@ -97,6 +97,22 @@ def _seconds_until_tehran_midnight() -> float:
     return (tomorrow_midnight - now).total_seconds()
 
 
+async def jira_poll_scheduler() -> None:
+    """Fallback pull when a Jira webhook is missed."""
+    from app.core.config import settings
+    from app.modules.jira.sync import poll_jira
+
+    interval = max(1, int(settings.JIRA_POLL_MINUTES)) * 60
+    await asyncio.sleep(20)
+    logger.info("Jira poll scheduler started (every %ss)", interval)
+    while True:
+        try:
+            await poll_jira()
+        except Exception:
+            logger.exception("Jira poll failed")
+        await asyncio.sleep(interval)
+
+
 async def midnight_scheduler() -> None:
     """Background task: every night at Tehran midnight, close any open sessions."""
     logger.info("Midnight scheduler started (timezone: Asia/Tehran)")

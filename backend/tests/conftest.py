@@ -46,10 +46,15 @@ from app.modules.work.model import WorkSession  # noqa: E402,F401
 from app.modules.status.model import StatusLog, UserStatus  # noqa: E402,F401
 from app.modules.reports.model import DailyReport  # noqa: E402,F401
 from app.modules.timeline.model import TimelineEvent  # noqa: E402,F401
+from app.modules.calendar.model import DayEntry  # noqa: E402,F401
+from app.modules.tasks.model import Task, TaskAssignee, TaskLabel, TaskLabelLink, TaskEvent, TaskAttachment  # noqa: E402,F401
+from app.modules.jira.model import JiraConnection, JiraUserMap, JiraSyncJob  # noqa: E402,F401
 
 TRUNCATE_SQL = text(
-    "TRUNCATE timeline_events, daily_reports, status_logs, "
-    "user_statuses, work_sessions, users RESTART IDENTITY CASCADE"
+    "TRUNCATE jira_sync_jobs, task_attachments, task_events, task_label_links, task_assignees, "
+    "task_labels, tasks, jira_user_maps, jira_connections, "
+    "timeline_events, daily_reports, status_logs, "
+    "user_statuses, work_sessions, day_entries, users RESTART IDENTITY CASCADE"
 )
 
 

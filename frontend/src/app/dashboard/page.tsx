@@ -10,6 +10,7 @@ import { StatusCard } from '@/components/StatusCard'
 import { ReportCard } from '@/components/ReportCard'
 import { TimelineCard } from '@/components/TimelineCard'
 import { DayNotesCard } from '@/components/DayNotesCard'
+import { DueTodayWidget } from '@/components/tasks/DueTodayWidget'
 import { calendarService } from '@/services/calendar.service'
 import { useT } from '@/hooks/useT'
 
@@ -68,6 +69,7 @@ export default function DashboardPage() {
             <StatusCard />
           </div>
           <div className="mt-6 flex flex-wrap gap-6">
+            <DueTodayWidget />
             <ReportCard />
             <TimelineCard />
           </div>

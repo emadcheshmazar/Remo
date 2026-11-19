@@ -121,3 +121,46 @@ export function jalaliMonthIsoRange(jy: number, jm: number): [string, string] {
   const endIso = jalaliToIso(jy, jm, jalaliMonthDays(jy, jm))
   return [startIso, endIso]
 }
+
+// ─── ETS company periods (24 → 23 next month) ────────────────────────────────
+// Payroll/attendance cycle: period named after month M runs from day 24 of the
+// previous month (inclusive) through day 23 of month M (inclusive). The next
+// period starts on day 24 of month M.
+export const ETS_PERIOD_START_DAY = 24
+export const ETS_PERIOD_END_DAY = 23
+
+export function prevJalaliMonth(jy: number, jm: number): [number, number] {
+  return jm === 1 ? [jy - 1, 12] : [jy, jm - 1]
+}
+
+export function nextJalaliMonth(jy: number, jm: number): [number, number] {
+  return jm === 12 ? [jy + 1, 1] : [jy, jm + 1]
+}
+
+/** ETS period named after (jy, jm): 24 of previous month → 23 of this month. */
+export function etsPeriodIsoRange(jy: number, jm: number): [string, string] {
+  const [py, pm] = prevJalaliMonth(jy, jm)
+  const startIso = jalaliToIso(py, pm, ETS_PERIOD_START_DAY)
+  const endIso = jalaliToIso(jy, jm, ETS_PERIOD_END_DAY)
+  return [startIso, endIso]
+}
+
+/** Which ETS period contains this Jalali day? Returns the period's end-month (jy, jm). */
+export function etsPeriodOf(jy: number, jm: number, jd: number): [number, number] {
+  if (jd >= ETS_PERIOD_START_DAY) return nextJalaliMonth(jy, jm)
+  return [jy, jm]
+}
+
+export function todayEtsPeriod(): [number, number] {
+  const [jy, jm, jd] = todayJalali()
+  return etsPeriodOf(jy, jm, jd)
+}
+
+/** Human label: "۲۴ شهریور تا ۲۳ مهر ۱۴۰۴" */
+export function formatEtsPeriodRange(jy: number, jm: number): string {
+  const [py, pm] = prevJalaliMonth(jy, jm)
+  const start = `${ETS_PERIOD_START_DAY} ${JALALI_MONTHS[pm - 1]}`
+  const end = `${ETS_PERIOD_END_DAY} ${JALALI_MONTHS[jm - 1]}`
+  if (py !== jy) return `${start} ${py} تا ${end} ${jy}`
+  return `${start} تا ${end} ${jy}`
+}

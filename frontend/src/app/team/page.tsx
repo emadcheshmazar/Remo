@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/auth.store'
 import { AppLayout } from '@/components/AppLayout'
@@ -32,7 +33,17 @@ export default function TeamPage() {
 
   return (
     <AppLayout>
-      <h1 className="text-lg font-semibold text-gray-800 dark:text-slate-100 mb-6">{t('team')}</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-accent-700 dark:text-accent-300">{t('task_workspace')}</p>
+          <h1 className="font-display text-xl font-semibold text-ink-900 dark:text-ink-50">{t('team')}</h1>
+        </div>
+        {(user.role === 'MANAGER' || user.role === 'ADMIN') && (
+          <Link href="/settings/jira" className="remo-btn-secondary text-xs">
+            {t('jira_people_sync')}
+          </Link>
+        )}
+      </div>
       <UserTable title={t('team')} creatableRoles={creatableRoles} />
     </AppLayout>
   )

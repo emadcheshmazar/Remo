@@ -9,6 +9,7 @@
 - [تکنولوژی‌ها](#تکنولوژیها)
 - [پیش‌نیازها](#پیشنیازها)
 - [راه‌اندازی سریع با Docker](#راهاندازی-سریع-با-docker)
+- [دیپلوی روی سرور با IP ثابت](#دیپلوی-روی-سرور-با-ip-ثابت)
 - [متغیرهای محیطی](#متغیرهای-محیطی)
 - [اجرای محلی بدون Docker](#اجرای-محلی-بدون-docker)
 - [دیتابیس و داده‌های پایدار](#دیتابیس-و-دادههای-پایدار)
@@ -120,6 +121,133 @@ docker compose up --build
 
 ---
 
+## دیپلوی روی سرور با IP ثابت
+
+این راهنما برای حالتی است که همه چیز با IP سرور در دسترس است:
+
+```text
+Server IP: 192.168.0.100
+Frontend:  http://192.168.0.100:3210
+Backend:   http://192.168.0.100:8080
+API Docs:  http://192.168.0.100:8080/docs
+Database:  PostgreSQL داخل Docker Compose
+```
+
+> اگر کاربرها خارج از شبکه داخلی هستند، `192.168.0.100` کافی نیست و باید IP پابلیک، VPN یا دامنه قابل دسترسی برای کاربرها استفاده شود.
+
+### حالت ۱ — اجرای کامل با Docker Compose روی همان سرور
+
+در این حالت فرانت، بک‌اند و دیتابیس با همین `docker-compose.yml` بالا می‌آیند. بک‌اند داخل شبکه Docker دیتابیس را با اسم سرویس `db:5432` می‌بیند و نیازی نیست `DATABASE_URL` را دستی در فایل ریشه بنویسید.
+
+#### ۱. پروژه را روی سرور بگیرید
+
+```bash
+git clone <repo-url>
+cd remote-work
+```
+
+#### ۲. فایل env ریشه را بسازید
+
+```bash
+cp .env.example .env
+```
+
+نمونه مناسب برای همین سرور:
+
+```env
+POSTGRES_USER=rwms
+POSTGRES_PASSWORD=<strong-db-password>
+POSTGRES_DB=rwms
+SECRET_KEY=<strong-random-secret-key>
+NEXT_PUBLIC_API_URL=http://192.168.0.100:8080
+CORS_ORIGINS=http://192.168.0.100:3210
+```
+
+برای ساخت `SECRET_KEY` روی لینوکس:
+
+```bash
+openssl rand -hex 32
+```
+
+#### ۳. سرویس‌ها را build و اجرا کنید
+
+```bash
+docker compose up -d --build
+```
+
+#### ۴. لاگ‌ها و سلامت سرویس‌ها را چک کنید
+
+```bash
+docker compose ps
+docker compose logs -f backend
+docker compose logs -f frontend
+```
+
+تست سریع API:
+
+```bash
+curl http://192.168.0.100:8080/health
+```
+
+#### ۵. پورت‌های لازم را باز کنید
+
+| پورت | سرویس | توضیح |
+|------|-------|-------|
+| `3210` | Frontend | باید برای کاربران باز باشد |
+| `8080` | Backend API | باید برای مرورگر کاربران باز باشد |
+| `5434` | PostgreSQL روی host | فقط اگر واقعاً از بیرون Docker لازم است؛ عمومی باز نشود |
+
+### حالت ۲ — بک‌اند و فرانت به‌صورت دو app جدا
+
+اگر DevOps بک‌اند و فرانت را جدا deploy می‌کند، env هر app جدا داده می‌شود.
+
+#### Backend app env
+
+اگر بک‌اند خارج از Docker Compose است و باید به دیتابیس expose شده روی همین سرور وصل شود:
+
+```env
+DATABASE_URL=postgresql+asyncpg://rwms:<strong-db-password>@192.168.0.100:5434/rwms
+SECRET_KEY=<strong-random-secret-key>
+CORS_ORIGINS=http://192.168.0.100:3210
+```
+
+اگر بک‌اند داخل همان Docker Compose و کنار دیتابیس اجرا می‌شود، host دیتابیس باید `db` باشد:
+
+```env
+DATABASE_URL=postgresql+asyncpg://rwms:<strong-db-password>@db:5432/rwms
+SECRET_KEY=<strong-random-secret-key>
+CORS_ORIGINS=http://192.168.0.100:3210
+```
+
+#### Frontend app env
+
+```env
+NEXT_PUBLIC_API_URL=http://192.168.0.100:8080
+```
+
+> مقدار `NEXT_PUBLIC_API_URL` باید آدرسی باشد که مرورگر کاربر بتواند به آن وصل شود. بنابراین `localhost`، `db` یا اسم داخلی Docker برای فرانت مناسب نیست.
+
+### فایل‌های env آماده تحویل به DevOps
+
+این فایل‌ها برای همین IP ساخته شده‌اند و در git بالا نمی‌روند:
+
+| فایل | کاربرد |
+|------|--------|
+| `.env` | اجرای کامل با Docker Compose |
+| `backend/.env` | اجرای بک‌اند به‌صورت جدا |
+| `frontend/.env.local` | اجرای فرانت به‌صورت جدا یا local build |
+
+فقط فایل‌های نمونه مثل `.env.example` و `backend/.env.example` داخل git می‌مانند. فایل‌های واقعی env شامل secret هستند و باید دستی/امن به DevOps داده شوند.
+
+### نکات مهم دیتابیس
+
+- با `docker compose restart`، `docker compose down` و `docker compose up` دیتابیس ریست نمی‌شود.
+- داده‌ها در named volume به نام `postgres_data` نگهداری می‌شوند.
+- دستور `docker compose down -v` volume را حذف می‌کند و داده‌ها را از بین می‌برد.
+- اگر بعد از ساخته شدن دیتابیس، `POSTGRES_PASSWORD` را در `.env` عوض کنید، رمز دیتابیس موجود خودکار تغییر نمی‌کند؛ برای دیتابیس تازه مشکلی نیست.
+
+---
+
 ## متغیرهای محیطی
 
 ### سطح ریشه (`.env`)
@@ -142,6 +270,22 @@ DATABASE_URL=postgresql+asyncpg://rwms:rwms@localhost:5432/rwms
 SECRET_KEY=changeme_in_production
 CORS_ORIGINS=http://localhost:3210
 ```
+
+### فرانت‌اند مجزا (`frontend/.env.local`)
+
+برای اجرای فرانت بدون Docker یا build جدا:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+روی سرور `192.168.0.100`:
+
+```env
+NEXT_PUBLIC_API_URL=http://192.168.0.100:8080
+```
+
+> در Next.js مقدارهای `NEXT_PUBLIC_*` سمت مرورگر استفاده می‌شوند؛ پس بعد از تغییر این مقدار، فرانت باید دوباره build/start شود.
 
 ---
 
